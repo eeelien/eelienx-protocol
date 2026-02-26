@@ -12,13 +12,20 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  min-height: 100dvh; /* Para móviles con barras dinámicas */
+  overscroll-behavior: none;
 }
 
 /* Fondo animado estilo matrix/alien */
@@ -39,7 +46,8 @@ body::before {
 
 /* Scrollbar personalizado */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -48,7 +56,11 @@ body::before {
 
 ::-webkit-scrollbar-thumb {
   background: var(--primary);
-  border-radius: 4px;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
 }
 
 /* Animaciones */
@@ -67,6 +79,11 @@ body::before {
   50% { opacity: 0; }
 }
 
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
@@ -79,4 +96,57 @@ body::before {
   content: '▊';
   animation: typing 1s infinite;
   color: var(--primary);
+}
+
+/* Mejoras móviles */
+@media (max-width: 640px) {
+  body {
+    font-size: 14px;
+  }
+  
+  /* Prevenir zoom en inputs en iOS */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Efectos de toque */
+button:active {
+  transform: scale(0.97);
+}
+
+/* Mejorar legibilidad del texto */
+p {
+  line-height: 1.5;
+}
+
+/* Indicador de precio positivo/negativo */
+.price-up {
+  color: #00ff88;
+}
+
+.price-down {
+  color: #ff4444;
+}
+
+/* Glassmorphism cards */
+.glass {
+  background: rgba(20, 20, 40, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 136, 0.1);
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-timing-function: ease-out;
+  transition-duration: 150ms;
+}
+
+/* Fix para safe area en móviles */
+@supports (padding: max(0px)) {
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
