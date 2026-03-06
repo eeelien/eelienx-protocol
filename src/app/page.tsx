@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import BitsoConnectModal from '@/components/BitsoConnectModal';
 
 // Tipos para los precios
 interface CryptoData {
@@ -190,6 +191,8 @@ export default function Home() {
   });
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showBitsoConnect, setShowBitsoConnect] = useState(false);
+  const [bitsoConnected, setBitsoConnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch precios en tiempo real
@@ -260,15 +263,28 @@ export default function Home() {
     await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 800));
     
     const { response, needsPermission, permissionData } = getAgentResponse(input, prices);
-    
+
+    // Check if operation requires Bitso connection
+    if (needsPermission && !bitsoConnected) {
+      const connectMsg: Message = {
+        id: Date.now() + 1,
+        type: 'agent',
+        content: 'Para operar necesito conectarme a tu Bitso primero.'
+      };
+      setMessages(prev => [...prev, connectMsg]);
+      setIsTyping(false);
+      setShowBitsoConnect(true);
+      return;
+    }
+
     const agentMessage: Message = {
       id: Date.now() + 1,
       type: 'agent',
       content: response
     };
-    
+
     setMessages(prev => [...prev, agentMessage]);
-    
+
     if (needsPermission && permissionData) {
       await new Promise(resolve => setTimeout(resolve, 500));
       const permissionMessage: Message = {
@@ -541,6 +557,31 @@ export default function Home() {
           </div>
         </main>
       </div>
+
+      {/* Bitso Connect Modal */}
+      {showBitsoConnect && (
+        <BitsoConnectModal
+          onClose={() => setShowBitsoConnect(false)}
+          onConnect={() => {
+            setShowBitsoConnect(false);
+            setBitsoConnected(true);
+            const msg: Message = {
+              id: Date.now(),
+              type: 'agent',
+              content: '✅ ¡Bitso conectado! Ahora puedo operar por ti.'
+            };
+            setMessages(prev => [...prev, msg]);
+          }}
+          onManualFlow={() => {
+            const msg: Message = {
+              id: Date.now(),
+              type: 'agent',
+              content: '🔧 **Conectar Bitso manualmente:**\n\n1. Ve a bitso.com/developers\n2. Crea una API Key con permisos de trading\n3. Copia tu API Key y Secret\n4. Guárdalas en tu archivo .env.local:\n   - BITSO_API_KEY=tu_key\n   - BITSO_API_SECRET=tu_secret\n5. Reinicia la app\n\n¡Listo! Con eso puedo operar por ti.'
+            };
+            setMessages(prev => [...prev, msg]);
+          }}
+        />
+      )}
     </div>
   );
 }
