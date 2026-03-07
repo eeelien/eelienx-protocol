@@ -2,6 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ExchangeConnectModal from '@/components/ExchangeConnectModal';
+import PortfolioChart from '@/components/PortfolioChart';
+import {
+  loadPortfolio, initPortfolio, addSnapshot, computeCurrentValue,
+  parseHoldings, parseCapital, PortfolioState,
+} from '@/lib/portfolio';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -164,7 +169,11 @@ function getAgentResponse(
   }
 
   if (lowerInput.includes('ayuda') || lowerInput.includes('qué puedes hacer')) {
-    return { response: '👽 Soy **eelienX Protocol**, tu agente crypto. Puedo:\n\n🔹 Ver precios en tiempo real (CoinGecko)\n🔹 Analizar el mercado y darte recomendaciones\n🔹 Mostrar tu portafolio real (Bitso, Binance, Bybit)\n🔹 Comprar/vender crypto en tu nombre\n🔹 Monitorear tu cartera fría (Ledger, MetaMask)\n\nTodo con tu autorización. Tú mandas, yo ejecuto. 🛸' };
+    return { response: '👽 Soy **eelienX Protocol**, tu agente crypto. Puedo:\n\n🔹 Ver precios en tiempo real (CoinGecko)\n🔹 Analizar el mercado y darte recomendaciones\n🔹 Mostrar tu portafolio real (Bitso, Binance, Bybit)\n🔹 Comprar/vender crypto en tu nombre\n🔹 Monitorear tu cartera fría (Ledger, MetaMask)\n🔹 Registrar tu rendimiento desde capital inicial con gráfica\n\nTodo con tu autorización. Tú mandas, yo ejecuto. 🛸' };
+  }
+
+  if (lowerInput.includes('reset') && lowerInput.includes('portafolio')) {
+    return { response: 'Para reiniciar tu registro de rendimiento escribe:\n"quiero reiniciar mi registro"\n\nEsto borrará el historial actual y empezarás de cero.' };
   }
 
   return { response: '👽 Entendido. ¿Podrías ser más específico?\n\nPrueba con:\n• "precios" — ver cotizaciones\n• "análisis" — saber si es buen momento\n• "mi saldo" — ver tu portafolio\n• "comprar bitcoin" — ejecutar operación\n• "conectar" — agregar un exchange' };
@@ -194,6 +203,10 @@ export default function Home() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [portfolio, setPortfolio] = useState<PortfolioState | null>(null);
+  const [currentPortfolioValue, setCurrentPortfolioValue] = useState(0);
+  const [awaitingCapital, setAwaitingCapital] = useState(false);
+  const [pendingHoldings, setPendingHoldings] = useState<{ symbol: string; amount: number }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch precios en tiempo real
@@ -258,6 +271,21 @@ export default function Home() {
     }
   }, []);
 
+  // Load portfolio from localStorage on mount
+  useEffect(() => {
+    const saved = loadPortfolio();
+    if (saved) setPortfolio(saved);
+  }, []);
+
+  // Update portfolio value when prices change
+  useEffect(() => {
+    if (!portfolio) return;
+    const value = computeCurrentValue(portfolio.holdings, prices);
+    setCurrentPortfolioValue(value);
+    const updated = addSnapshot(portfolio, value);
+    if (updated !== portfolio) setPortfolio(updated);
+  }, [prices, portfolio]);
+
   useEffect(() => {
     fetchPrices();
     fetchBalances();
@@ -275,12 +303,117 @@ export default function Home() {
 
     const userMessage: Message = { id: Date.now(), type: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setIsTyping(true);
 
-    await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+    await new Promise(r => setTimeout(r, 700 + Math.random() * 500));
 
-    const { response, needsPermission, permissionData } = getAgentResponse(input, prices, wallet, connected);
+    const lower = currentInput.toLowerCase();
+
+    // ── Portfolio tracking flow ──────────────────────────────────────────────
+
+    // User says "gráfica", "registro", "cómo voy", "rendimiento"
+    if (!awaitingCapital && (lower.includes('gráfica') || lower.includes('grafica') || lower.includes('registro') || lower.includes('cómo voy') || lower.includes('como voy') || lower.includes('rendimiento') || lower.includes('ganado') || lower.includes('perdido'))) {
+      if (!portfolio) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: '📊 Para llevar tu registro necesito saber con cuánto empezaste.\n\n¿Cuál fue tu **capital inicial** en MXN? (ejemplo: "empecé con $10,000")',
+        }]);
+        setAwaitingCapital(true);
+        setIsTyping(false);
+        return;
+      }
+
+      // Already has portfolio — show status
+      const { pct, diffMXN } = { pct: ((currentPortfolioValue - portfolio.initialCapitalMXN) / portfolio.initialCapitalMXN) * 100, diffMXN: currentPortfolioValue - portfolio.initialCapitalMXN };
+      const emoji = diffMXN >= 0 ? '📈' : '📉';
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1, type: 'agent',
+        content: `${emoji} **Tu rendimiento:**\n\nCapital inicial: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\nValor actual: ~$${Math.round(currentPortfolioValue).toLocaleString()} MXN\n\n${diffMXN >= 0 ? '✅ Ganancia' : '⚠️ Pérdida'}: ${diffMXN >= 0 ? '+' : ''}${Math.round(diffMXN).toLocaleString()} MXN (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)\n\n📊 La gráfica está en el panel lateral.`,
+      }]);
+      setIsTyping(false);
+      return;
+    }
+
+    // User is setting capital ("empecé con $10,000")
+    if (awaitingCapital) {
+      const capital = parseCapital(currentInput);
+      if (!capital || capital < 1) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: 'No entendí el monto 😅 Escríbelo así:\n\n"Empecé con $10,000" o "mi capital inicial fue $5000"',
+        }]);
+        setIsTyping(false);
+        return;
+      }
+
+      // Ask for holdings
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1, type: 'agent',
+        content: `Anotado: $${capital.toLocaleString()} MXN de capital inicial. 📝\n\n¿Qué cryptos tienes actualmente? Dime las cantidades:\n\n_Ejemplo: "tengo 0.05 BTC, 1.2 ETH y 500 USDT"_\n\n(Si todo está en efectivo, escribe "solo efectivo")`,
+      }]);
+      setPendingHoldings([]);
+      setAwaitingCapital(false);
+
+      // Temporarily store capital in state to use in next message
+      // We'll use a ref trick: set portfolio with 0 holdings first, update after holdings
+      const tempPortfolio = initPortfolio(capital, [{ symbol: 'MXN', amount: capital }]);
+      setPortfolio(tempPortfolio);
+
+      // Flag that we're awaiting holdings now
+      setMessages(prev => {
+        // Add a hidden marker — just set the state
+        return prev;
+      });
+
+      // Wait for next message with holdings
+      // We store capital in portfolio.initialCapitalMXN and will update holdings next
+      setIsTyping(false);
+      return;
+    }
+
+    // If portfolio exists but has only MXN (just set capital, now getting holdings)
+    if (portfolio && portfolio.holdings.length === 1 && portfolio.holdings[0].symbol === 'MXN') {
+      if (lower.includes('solo efectivo') || lower.includes('todo efectivo') || lower.includes('solo pesos')) {
+        // All cash, no crypto
+        const updated = initPortfolio(portfolio.initialCapitalMXN, [{ symbol: 'MXN', amount: portfolio.initialCapitalMXN }]);
+        setPortfolio(updated);
+        setCurrentPortfolioValue(portfolio.initialCapitalMXN);
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: `✅ **¡Registro iniciado!**\n\nCapital: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\nEn efectivo: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\n\nEmpezaré a registrar cómo va tu portafolio. Puedes decirme "cómo voy" en cualquier momento. 📊`,
+        }]);
+        setIsTyping(false);
+        return;
+      }
+
+      const holdings = parseHoldings(currentInput);
+      if (holdings.length > 0) {
+        const updated = initPortfolio(portfolio.initialCapitalMXN, holdings);
+        setPortfolio(updated);
+        const value = computeCurrentValue(holdings, prices);
+        setCurrentPortfolioValue(value);
+        const holdingsText = holdings.map(h => `${h.amount} ${h.symbol}`).join(', ');
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: `✅ **¡Registro iniciado!**\n\nCapital inicial: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\nTus cryptos: ${holdingsText}\nValor actual: ~$${Math.round(value).toLocaleString()} MXN\n\nVoy a registrar tu rendimiento cada vez que abras la app. Escribe "cómo voy" o "gráfica" cuando quieras verlo. 📊🛸`,
+        }]);
+        setIsTyping(false);
+        return;
+      }
+
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1, type: 'agent',
+        content: 'Dime tus cryptos con cantidades, por ejemplo:\n"tengo 0.05 BTC y 500 USDT"\n\nO escribe "solo efectivo" si no tienes crypto todavía.',
+      }]);
+      setIsTyping(false);
+      return;
+    }
+
+    // ── Regular agent responses ───────────────────────────────────────────────
+
+    const { response, needsPermission, permissionData } = getAgentResponse(currentInput, prices, wallet, connected);
 
     const agentMessage: Message = { id: Date.now() + 1, type: 'agent', content: response };
     setMessages(prev => [...prev, agentMessage]);
@@ -473,8 +606,36 @@ export default function Home() {
             )}
           </div>
 
+          {/* Portfolio chart */}
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold text-gray-400 mb-3">📈 MI RENDIMIENTO</h2>
+            {portfolio && currentPortfolioValue > 0 ? (
+              <PortfolioChart portfolio={portfolio} currentValueMXN={currentPortfolioValue} />
+            ) : (
+              <button
+                onClick={() => {
+                  setInput('cómo voy');
+                  // trigger send manually after state update
+                  setTimeout(() => {
+                    const syntheticMsg: Message = {
+                      id: Date.now(), type: 'agent',
+                      content: '📊 Para llevar tu registro necesito saber con cuánto empezaste.\n\n¿Cuál fue tu **capital inicial** en MXN? (ejemplo: "empecé con $10,000")',
+                    };
+                    setMessages(prev => [...prev, syntheticMsg]);
+                    setAwaitingCapital(true);
+                    setInput('');
+                    setShowSidebar(false);
+                  }, 100);
+                }}
+                className="w-full p-3 rounded-xl border border-dashed border-[var(--border)] text-xs text-gray-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors text-center"
+              >
+                📊 Registrar capital inicial
+              </button>
+            )}
+          </div>
+
           {/* Market summary */}
-          <div className="mt-6 p-3 rounded-lg bg-gradient-to-br from-[var(--primary)]/10 to-[var(--secondary)]/10 border border-[var(--primary)]/30">
+          <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-[var(--primary)]/10 to-[var(--secondary)]/10 border border-[var(--primary)]/30">
             <h3 className="text-sm font-semibold mb-2">🧠 Resumen rápido</h3>
             <p className="text-xs text-gray-300">
               {prices.BTC?.change > 2
@@ -566,10 +727,10 @@ export default function Home() {
               </button>
             </div>
             <div className="mt-2 flex gap-2 flex-wrap">
-              {['📊 Precios', '🧠 Análisis', '💰 Saldo', '🔗 Conectar', '❓ Ayuda'].map(suggestion => (
+              {['📊 Precios', '🧠 Análisis', '💰 Saldo', '📈 Cómo voy', '🔗 Conectar', '❓ Ayuda'].map(suggestion => (
                 <button
                   key={suggestion}
-                  onClick={() => setInput(suggestion.split(' ').slice(1).join(' '))}
+                  onClick={() => setInput(suggestion.split(' ').slice(1).join(' ').toLowerCase())}
                   className="text-xs px-3 py-1.5 rounded-full bg-black/30 border border-[var(--border)] text-gray-400 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors active:scale-95"
                 >
                   {suggestion}
