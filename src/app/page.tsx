@@ -1,752 +1,287 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import ExchangeConnectModal from '@/components/ExchangeConnectModal';
-import PortfolioChart from '@/components/PortfolioChart';
-import {
-  loadPortfolio, initPortfolio, addSnapshot, computeCurrentValue,
-  parseHoldings, parseCapital, PortfolioState,
-} from '@/lib/portfolio';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const PRICES_DEMO = ['BTC $97,420', 'ETH $3,841', 'SOL $182', 'BNB $614', 'XRP $2.31'];
 
-interface CryptoData {
-  price: number;
-  change: number;
-  name: string;
-  high24h: number;
-  low24h: number;
-  volume: number;
-}
-interface CryptoPrices { [key: string]: CryptoData }
+const FEATURES = [
+  { icon: '📊', title: 'Precios en tiempo real', desc: 'CoinGecko + tus exchanges en un solo lugar. Sin abrir 10 pestañas.' },
+  { icon: '🔐', title: 'Opera con autorización', desc: 'eelienX propone, tú autorizas. Nunca se mueve un peso sin tu OK.' },
+  { icon: '🧠', title: 'Análisis inteligente', desc: 'El agente analiza el mercado y te dice si es buen momento o no. En español claro.' },
+  { icon: '🏦', title: 'Multi-exchange', desc: 'Conecta Bitso, Binance o Bybit. Todos tus fondos en un solo panel.' },
+  { icon: '🧊', title: 'Cartera fría incluida', desc: 'Monitorea tu Ledger o MetaMask. Solo lectura — nadie puede mover tu crypto de ahí.' },
+  { icon: '📈', title: 'Registro de rendimiento', desc: 'Dile cuánto pusiste al inicio. eelienX te muestra si vas ganando o perdiendo, con gráfica.' },
+];
 
-interface WalletBalance {
-  symbol: string;
-  available: number;
-  total: number;
-  exchange: string;
-}
+const PLANS = [
+  {
+    name: 'Free',
+    price: '$0',
+    period: 'siempre',
+    color: 'border-gray-700',
+    features: ['Precios en tiempo real', 'Análisis de mercado', 'Ver portafolio', '2 consultas premium gratis'],
+    cta: 'Empezar gratis',
+    highlight: false,
+  },
+  {
+    name: 'Básico',
+    price: '$99',
+    period: 'MXN/mes',
+    color: 'border-[var(--primary)]',
+    features: ['Todo lo de Free', '1 exchange conectado', '50 operaciones/mes', 'Alertas de precio', 'Registro de rendimiento'],
+    cta: 'Quiero el Básico',
+    highlight: true,
+  },
+  {
+    name: 'Premium',
+    price: '$299',
+    period: 'MXN/mes',
+    color: 'border-[var(--secondary)]',
+    features: ['Todo lo de Básico', 'Exchanges ilimitados', 'Cartera fría (Ledger/Trezor)', 'Operaciones ilimitadas', 'Análisis avanzado + gráficas'],
+    cta: 'Quiero el Premium',
+    highlight: false,
+  },
+];
 
-interface ConnectedAccount {
-  id: string;
-  label: string;
-  type: 'exchange' | 'wallet';
-  connectedAt: string;
-}
+const STEPS = [
+  { n: '01', title: 'Conecta tu exchange', desc: 'Bitso, Binance o Bybit. Solo necesitas tu API Key — como en cualquier app de trading.' },
+  { n: '02', title: 'Pregúntale al agente', desc: 'En español normal. "¿Es buen momento de comprar?" o "Compra 0.001 BTC por mí".' },
+  { n: '03', title: 'Tú autorizas, él ejecuta', desc: 'Cada operación necesita tu OK. eelienX nunca mueve dinero sin que tú lo apruebes.' },
+];
 
-interface Message {
-  id: number;
-  type: 'user' | 'agent' | 'permission';
-  content: string;
-  permissionData?: {
-    action: string;
-    details: string;
-    status: 'pending' | 'approved' | 'rejected';
-  };
-}
+export default function Landing() {
+  const [tickerIdx, setTickerIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
 
-// ─── Market analysis ──────────────────────────────────────────────────────────
-
-function getMarketAnalysis(prices: CryptoPrices): string {
-  const btc = prices.BTC;
-  const eth = prices.ETH;
-  if (!btc || !eth) return "Cargando datos del mercado...";
-
-  let analysis = "🧠 **Análisis del mercado:**\n\n";
-
-  if (btc.change > 5) {
-    analysis += `📈 **Bitcoin (+${btc.change.toFixed(1)}%)**: Subida fuerte. Mercado muy optimista.\n`;
-    analysis += `⚠️ *Recomendación:* Cuidado con comprar en la cima. Considera tomar ganancias parciales.\n\n`;
-  } else if (btc.change > 2) {
-    analysis += `📈 **Bitcoin (+${btc.change.toFixed(1)}%)**: Tendencia alcista saludable.\n`;
-    analysis += `✅ *Recomendación:* Buen momento para mantener. Si compras, hazlo gradualmente.\n\n`;
-  } else if (btc.change > -2) {
-    analysis += `➡️ **Bitcoin (${btc.change > 0 ? '+' : ''}${btc.change.toFixed(1)}%)**: Mercado estable.\n`;
-    analysis += `✅ *Recomendación:* Buen momento para entrar en largo plazo.\n\n`;
-  } else if (btc.change > -5) {
-    analysis += `📉 **Bitcoin (${btc.change.toFixed(1)}%)**: Corrección moderada.\n`;
-    analysis += `💡 *Recomendación:* Posible oportunidad de compra (buy the dip). Espera que se estabilice.\n\n`;
-  } else {
-    analysis += `🔴 **Bitcoin (${btc.change.toFixed(1)}%)**: Caída fuerte. Mercado en pánico.\n`;
-    analysis += `⚠️ *Recomendación:* NO vendas en pánico. Con capital extra, podría ser oportunidad.\n\n`;
-  }
-
-  const ethVsBtc = eth.change - btc.change;
-  if (ethVsBtc > 3) analysis += `🔷 **Ethereum** supera a Bitcoin hoy. Las altcoins tienen momentum.\n`;
-  else if (ethVsBtc < -3) analysis += `🔷 **Ethereum** más débil que Bitcoin. El mercado busca seguridad en BTC.\n`;
-
-  const btcRange = ((btc.price - btc.low24h) / (btc.high24h - btc.low24h) * 100);
-  if (btcRange > 80) analysis += `\n📊 BTC cerca del máximo del día — posible resistencia.`;
-  else if (btcRange < 20) analysis += `\n📊 BTC cerca del mínimo del día — posible soporte.`;
-
-  return analysis;
-}
-
-// ─── Agent responses ──────────────────────────────────────────────────────────
-
-function getAgentResponse(
-  input: string,
-  prices: CryptoPrices,
-  wallet: WalletBalance[],
-  connected: ConnectedAccount[]
-): { response: string; needsPermission?: boolean; permissionData?: any } {
-  const lowerInput = input.toLowerCase();
-
-  if (lowerInput.includes('hola') || lowerInput.includes('hey') || lowerInput.includes('qué onda')) {
-    return { response: '¡Qué onda! 👽 Soy eelienX, tu agente crypto. Puedo ayudarte a:\n\n• Ver precios en tiempo real\n• Analizar si es buen momento de operar\n• Ejecutar operaciones en tu nombre\n• Monitorear tu cartera fría\n\n¿Qué necesitas?' };
-  }
-
-  if (lowerInput.includes('precio') || lowerInput.includes('cuánto está') || lowerInput.includes('cotización')) {
-    const priceList = Object.entries(prices)
-      .map(([symbol, data]) => {
-        const emoji = data.change > 0 ? '📈' : data.change < 0 ? '📉' : '➡️';
-        return `${emoji} ${data.name}: $${data.price.toLocaleString()} USD (${data.change > 0 ? '+' : ''}${data.change.toFixed(2)}%)`;
-      })
-      .join('\n');
-    return { response: `📊 **Precios en tiempo real:**\n\n${priceList}\n\n💡 Escribe "análisis" para recomendaciones.` };
-  }
-
-  if (lowerInput.includes('portafolio') || lowerInput.includes('balance') || lowerInput.includes('tengo') || lowerInput.includes('saldo')) {
-    if (wallet.length === 0) {
-      return { response: '🔌 Aún no tienes ningún exchange conectado.\n\nEscribe "conectar" para agregar Bitso, Binance, Bybit o tu cartera fría.' };
-    }
-
-    const byExchange = wallet.reduce((acc, b) => {
-      if (!acc[b.exchange]) acc[b.exchange] = [];
-      acc[b.exchange].push(b);
-      return acc;
-    }, {} as Record<string, WalletBalance[]>);
-
-    let response = '🛸 **Tu portafolio eelienX:**\n\n';
-    for (const [exchange, balances] of Object.entries(byExchange)) {
-      response += `**${exchange.toUpperCase()}**\n`;
-      for (const b of balances) {
-        const price = prices[b.symbol]?.price || 0;
-        const valueMXN = b.total * price * 17.5;
-        response += `  ${b.symbol}: ${b.total.toFixed(6)} ${valueMXN > 0 ? `(~$${valueMXN.toLocaleString()} MXN)` : ''}\n`;
-      }
-      response += '\n';
-    }
-
-    return { response };
-  }
-
-  if (lowerInput.includes('análisis') || lowerInput.includes('analisis') || lowerInput.includes('buen momento') || lowerInput.includes('recomend')) {
-    return { response: getMarketAnalysis(prices) };
-  }
-
-  if (lowerInput.includes('conectar') || lowerInput.includes('agregar exchange') || lowerInput.includes('añadir')) {
-    return { response: '🔗 Abre el panel de conexiones arriba (botón **Conectar**) para agregar Bitso, Binance, Bybit o tu cartera fría.\n\nNecesitas tu API Key de cada exchange — las encuentras en la sección de configuración de cada plataforma.' };
-  }
-
-  if (lowerInput.includes('comprar') && (lowerInput.includes('btc') || lowerInput.includes('bitcoin'))) {
-    if (connected.filter(c => c.type === 'exchange').length === 0) {
-      return { response: '🔌 Para operar necesitas conectar un exchange primero.\n\nEscribe "conectar" o usa el botón de arriba.' };
-    }
-    const btc = prices.BTC;
-    return {
-      response: `🔐 Para comprar Bitcoin necesito tu autorización...`,
-      needsPermission: true,
-      permissionData: {
-        action: 'Comprar Bitcoin (BTC)',
-        details: `Comprar 0.001 BTC (~$${((btc?.price || 67000) * 0.001 * 17.5).toLocaleString()} MXN) en ${connected.find(c => c.type === 'exchange')?.label || 'tu exchange'}`,
-      }
-    };
-  }
-
-  if (lowerInput.includes('vender') || lowerInput.includes('cambiar')) {
-    if (connected.filter(c => c.type === 'exchange').length === 0) {
-      return { response: '🔌 Para operar necesitas conectar un exchange primero.' };
-    }
-    return {
-      response: '🔐 Para realizar esta venta necesito tu autorización...',
-      needsPermission: true,
-      permissionData: {
-        action: 'Vender USDT → MXN',
-        details: 'Vender 100 USDT y convertir a MXN en tu exchange conectado',
-      }
-    };
-  }
-
-  if (lowerInput.includes('ayuda') || lowerInput.includes('qué puedes hacer')) {
-    return { response: '👽 Soy **eelienX Protocol**, tu agente crypto. Puedo:\n\n🔹 Ver precios en tiempo real (CoinGecko)\n🔹 Analizar el mercado y darte recomendaciones\n🔹 Mostrar tu portafolio real (Bitso, Binance, Bybit)\n🔹 Comprar/vender crypto en tu nombre\n🔹 Monitorear tu cartera fría (Ledger, MetaMask)\n🔹 Registrar tu rendimiento desde capital inicial con gráfica\n\nTodo con tu autorización. Tú mandas, yo ejecuto. 🛸' };
-  }
-
-  if (lowerInput.includes('reset') && lowerInput.includes('portafolio')) {
-    return { response: 'Para reiniciar tu registro de rendimiento escribe:\n"quiero reiniciar mi registro"\n\nEsto borrará el historial actual y empezarás de cero.' };
-  }
-
-  return { response: '👽 Entendido. ¿Podrías ser más específico?\n\nPrueba con:\n• "precios" — ver cotizaciones\n• "análisis" — saber si es buen momento\n• "mi saldo" — ver tu portafolio\n• "comprar bitcoin" — ejecutar operación\n• "conectar" — agregar un exchange' };
-}
-
-// ─── Main component ────────────────────────────────────────────────────────────
-
-export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      type: 'agent',
-      content: '👽 **¡Bienvenido a eelienX Protocol!**\n\nSoy tu agente crypto personal con precios en tiempo real.\n\nConecta tu exchange (Bitso, Binance, Bybit) o tu cartera fría para ver tu saldo real y operar.\n\n¿Qué quieres hacer hoy?'
-    }
-  ]);
-  const [input, setInput] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [prices, setPrices] = useState<CryptoPrices>({
-    BTC: { price: 0, change: 0, name: 'Bitcoin', high24h: 0, low24h: 0, volume: 0 },
-    ETH: { price: 0, change: 0, name: 'Ethereum', high24h: 0, low24h: 0, volume: 0 },
-    USDT: { price: 1, change: 0, name: 'Tether', high24h: 1, low24h: 1, volume: 0 },
-    SOL: { price: 0, change: 0, name: 'Solana', high24h: 0, low24h: 0, volume: 0 },
-    XRP: { price: 0, change: 0, name: 'Ripple', high24h: 0, low24h: 0, volume: 0 },
-  });
-  const [wallet, setWallet] = useState<WalletBalance[]>([]);
-  const [connected, setConnected] = useState<ConnectedAccount[]>([]);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [showConnectModal, setShowConnectModal] = useState(false);
-  const [portfolio, setPortfolio] = useState<PortfolioState | null>(null);
-  const [currentPortfolioValue, setCurrentPortfolioValue] = useState(0);
-  const [awaitingCapital, setAwaitingCapital] = useState(false);
-  const [pendingHoldings, setPendingHoldings] = useState<{ symbol: string; amount: number }[]>([]);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Fetch precios en tiempo real
-  const fetchPrices = useCallback(async () => {
-    try {
-      const res = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,tether,solana,ripple&order=market_cap_desc&sparkline=false&price_change_percentage=24h'
-      );
-      const data = await res.json();
-      const symbolMap: Record<string, string> = {
-        bitcoin: 'BTC', ethereum: 'ETH', tether: 'USDT', solana: 'SOL', ripple: 'XRP',
-      };
-      const newPrices: CryptoPrices = {};
-      data.forEach((coin: any) => {
-        const symbol = symbolMap[coin.id];
-        if (symbol) {
-          newPrices[symbol] = {
-            price: coin.current_price,
-            change: coin.price_change_percentage_24h || 0,
-            name: coin.name,
-            high24h: coin.high_24h,
-            low24h: coin.low_24h,
-            volume: coin.total_volume,
-          };
-        }
-      });
-      setPrices(prev => ({ ...prev, ...newPrices }));
-      setLastUpdate(new Date());
-    } catch (err) {
-      console.error('Error fetching prices:', err);
-    }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setTickerIdx(i => (i + 1) % PRICES_DEMO.length);
+        setVisible(true);
+      }, 300);
+    }, 2000);
+    return () => clearInterval(interval);
   }, []);
-
-  // Fetch real balances from connected exchanges
-  const fetchBalances = useCallback(async () => {
-    try {
-      const res = await fetch('/api/exchange-connect');
-      const data = await res.json();
-      if (!data.connections) return;
-
-      const allBalances: WalletBalance[] = [];
-      const allConnected: ConnectedAccount[] = [];
-
-      for (const [exchangeId, info] of Object.entries(data.connections) as [string, any][]) {
-        allConnected.push({
-          id: exchangeId,
-          label: exchangeId.charAt(0).toUpperCase() + exchangeId.slice(1),
-          type: ['ledger', 'metamask'].includes(exchangeId) ? 'wallet' : 'exchange',
-          connectedAt: info.connectedAt,
-        });
-        if (info.balanceSnapshot) {
-          for (const b of info.balanceSnapshot) {
-            allBalances.push({ ...b, exchange: exchangeId });
-          }
-        }
-      }
-
-      setWallet(allBalances);
-      setConnected(allConnected);
-    } catch (err) {
-      console.error('Error fetching balances:', err);
-    }
-  }, []);
-
-  // Load portfolio from localStorage on mount
-  useEffect(() => {
-    const saved = loadPortfolio();
-    if (saved) setPortfolio(saved);
-  }, []);
-
-  // Update portfolio value when prices change
-  useEffect(() => {
-    if (!portfolio) return;
-    const value = computeCurrentValue(portfolio.holdings, prices);
-    setCurrentPortfolioValue(value);
-    const updated = addSnapshot(portfolio, value);
-    if (updated !== portfolio) setPortfolio(updated);
-  }, [prices, portfolio]);
-
-  useEffect(() => {
-    fetchPrices();
-    fetchBalances();
-    const priceInterval = setInterval(fetchPrices, 30000);
-    const balanceInterval = setInterval(fetchBalances, 60000);
-    return () => { clearInterval(priceInterval); clearInterval(balanceInterval); };
-  }, [fetchPrices, fetchBalances]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = { id: Date.now(), type: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = input;
-    setInput('');
-    setIsTyping(true);
-
-    await new Promise(r => setTimeout(r, 700 + Math.random() * 500));
-
-    const lower = currentInput.toLowerCase();
-
-    // ── Portfolio tracking flow ──────────────────────────────────────────────
-
-    // User says "gráfica", "registro", "cómo voy", "rendimiento"
-    if (!awaitingCapital && (lower.includes('gráfica') || lower.includes('grafica') || lower.includes('registro') || lower.includes('cómo voy') || lower.includes('como voy') || lower.includes('rendimiento') || lower.includes('ganado') || lower.includes('perdido'))) {
-      if (!portfolio) {
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1, type: 'agent',
-          content: '📊 Para llevar tu registro necesito saber con cuánto empezaste.\n\n¿Cuál fue tu **capital inicial** en MXN? (ejemplo: "empecé con $10,000")',
-        }]);
-        setAwaitingCapital(true);
-        setIsTyping(false);
-        return;
-      }
-
-      // Already has portfolio — show status
-      const { pct, diffMXN } = { pct: ((currentPortfolioValue - portfolio.initialCapitalMXN) / portfolio.initialCapitalMXN) * 100, diffMXN: currentPortfolioValue - portfolio.initialCapitalMXN };
-      const emoji = diffMXN >= 0 ? '📈' : '📉';
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1, type: 'agent',
-        content: `${emoji} **Tu rendimiento:**\n\nCapital inicial: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\nValor actual: ~$${Math.round(currentPortfolioValue).toLocaleString()} MXN\n\n${diffMXN >= 0 ? '✅ Ganancia' : '⚠️ Pérdida'}: ${diffMXN >= 0 ? '+' : ''}${Math.round(diffMXN).toLocaleString()} MXN (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)\n\n📊 La gráfica está en el panel lateral.`,
-      }]);
-      setIsTyping(false);
-      return;
-    }
-
-    // User is setting capital ("empecé con $10,000")
-    if (awaitingCapital) {
-      const capital = parseCapital(currentInput);
-      if (!capital || capital < 1) {
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1, type: 'agent',
-          content: 'No entendí el monto 😅 Escríbelo así:\n\n"Empecé con $10,000" o "mi capital inicial fue $5000"',
-        }]);
-        setIsTyping(false);
-        return;
-      }
-
-      // Ask for holdings
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1, type: 'agent',
-        content: `Anotado: $${capital.toLocaleString()} MXN de capital inicial. 📝\n\n¿Qué cryptos tienes actualmente? Dime las cantidades:\n\n_Ejemplo: "tengo 0.05 BTC, 1.2 ETH y 500 USDT"_\n\n(Si todo está en efectivo, escribe "solo efectivo")`,
-      }]);
-      setPendingHoldings([]);
-      setAwaitingCapital(false);
-
-      // Temporarily store capital in state to use in next message
-      // We'll use a ref trick: set portfolio with 0 holdings first, update after holdings
-      const tempPortfolio = initPortfolio(capital, [{ symbol: 'MXN', amount: capital }]);
-      setPortfolio(tempPortfolio);
-
-      // Flag that we're awaiting holdings now
-      setMessages(prev => {
-        // Add a hidden marker — just set the state
-        return prev;
-      });
-
-      // Wait for next message with holdings
-      // We store capital in portfolio.initialCapitalMXN and will update holdings next
-      setIsTyping(false);
-      return;
-    }
-
-    // If portfolio exists but has only MXN (just set capital, now getting holdings)
-    if (portfolio && portfolio.holdings.length === 1 && portfolio.holdings[0].symbol === 'MXN') {
-      if (lower.includes('solo efectivo') || lower.includes('todo efectivo') || lower.includes('solo pesos')) {
-        // All cash, no crypto
-        const updated = initPortfolio(portfolio.initialCapitalMXN, [{ symbol: 'MXN', amount: portfolio.initialCapitalMXN }]);
-        setPortfolio(updated);
-        setCurrentPortfolioValue(portfolio.initialCapitalMXN);
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1, type: 'agent',
-          content: `✅ **¡Registro iniciado!**\n\nCapital: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\nEn efectivo: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\n\nEmpezaré a registrar cómo va tu portafolio. Puedes decirme "cómo voy" en cualquier momento. 📊`,
-        }]);
-        setIsTyping(false);
-        return;
-      }
-
-      const holdings = parseHoldings(currentInput);
-      if (holdings.length > 0) {
-        const updated = initPortfolio(portfolio.initialCapitalMXN, holdings);
-        setPortfolio(updated);
-        const value = computeCurrentValue(holdings, prices);
-        setCurrentPortfolioValue(value);
-        const holdingsText = holdings.map(h => `${h.amount} ${h.symbol}`).join(', ');
-        setMessages(prev => [...prev, {
-          id: Date.now() + 1, type: 'agent',
-          content: `✅ **¡Registro iniciado!**\n\nCapital inicial: $${portfolio.initialCapitalMXN.toLocaleString()} MXN\nTus cryptos: ${holdingsText}\nValor actual: ~$${Math.round(value).toLocaleString()} MXN\n\nVoy a registrar tu rendimiento cada vez que abras la app. Escribe "cómo voy" o "gráfica" cuando quieras verlo. 📊🛸`,
-        }]);
-        setIsTyping(false);
-        return;
-      }
-
-      setMessages(prev => [...prev, {
-        id: Date.now() + 1, type: 'agent',
-        content: 'Dime tus cryptos con cantidades, por ejemplo:\n"tengo 0.05 BTC y 500 USDT"\n\nO escribe "solo efectivo" si no tienes crypto todavía.',
-      }]);
-      setIsTyping(false);
-      return;
-    }
-
-    // ── Regular agent responses ───────────────────────────────────────────────
-
-    const { response, needsPermission, permissionData } = getAgentResponse(currentInput, prices, wallet, connected);
-
-    const agentMessage: Message = { id: Date.now() + 1, type: 'agent', content: response };
-    setMessages(prev => [...prev, agentMessage]);
-
-    if (needsPermission && permissionData) {
-      await new Promise(r => setTimeout(r, 400));
-      const permMsg: Message = {
-        id: Date.now() + 2,
-        type: 'permission',
-        content: '',
-        permissionData: { ...permissionData, status: 'pending' },
-      };
-      setMessages(prev => [...prev, permMsg]);
-    }
-
-    setIsTyping(false);
-  };
-
-  const handlePermission = (messageId: number, approved: boolean) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId && msg.permissionData
-        ? { ...msg, permissionData: { ...msg.permissionData, status: approved ? 'approved' : 'rejected' } }
-        : msg
-    ));
-    setTimeout(() => {
-      const resp: Message = {
-        id: Date.now(),
-        type: 'agent',
-        content: approved
-          ? '✅ **¡Operación autorizada!** Ejecutando en tu exchange...\n\n🔄 Conectando...\n✅ ¡Orden colocada exitosamente! Tu balance se actualizará en unos segundos. 🛸'
-          : '❌ Operación cancelada. No se realizó ningún movimiento.\n\n¿En qué más puedo ayudarte?',
-      };
-      setMessages(prev => [...prev, resp]);
-      if (approved) fetchBalances();
-    }, 500);
-  };
-
-  const handleConnected = (exchangeId: string, label: string) => {
-    setShowConnectModal(false);
-    setConnected(prev => [
-      ...prev.filter(c => c.id !== exchangeId),
-      { id: exchangeId, label, type: ['ledger', 'metamask'].includes(exchangeId) ? 'wallet' : 'exchange', connectedAt: new Date().toISOString() }
-    ]);
-    fetchBalances();
-    const msg: Message = {
-      id: Date.now(),
-      type: 'agent',
-      content: `✅ **¡${label} conectado!**\n\nYa puedo ver tu saldo real${['ledger', 'metamask'].includes(exchangeId) ? ' (solo lectura)' : ' y operar por ti'}.\n\nEscribe "mi saldo" para ver tu portafolio actualizado. 🛸`,
-    };
-    setMessages(prev => [...prev, msg]);
-  };
-
-  const formatText = (text: string) =>
-    text.split('\n').map((line, i) => {
-      line = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\*(.+?)\*/g, '<em>$1</em>');
-      return <p key={i} className="mb-1" dangerouslySetInnerHTML={{ __html: line || '&nbsp;' }} />;
-    });
-
-  // Compute total portfolio value in MXN
-  const totalMXN = wallet.reduce((acc, b) => {
-    if (b.symbol === 'MXN') return acc + b.total;
-    const price = prices[b.symbol]?.price || 0;
-    return acc + b.total * price * 17.5;
-  }, 0);
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-[var(--border)] bg-[var(--card-bg)] backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-black font-bold glow">
+
+      {/* ── Nav ───────────────────────────────────────────────── */}
+      <nav className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--card-bg)] backdrop-blur-md">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-sm">
               👽
             </div>
-            <div>
-              <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent">
-                eelienX Protocol
-              </h1>
-              <p className="text-xs text-gray-400 hidden sm:block">Tu agente crypto personal</p>
-            </div>
+            <span className="font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent">
+              eelienX Protocol
+            </span>
           </div>
-          <div className="flex items-center gap-2">
-            {lastUpdate && (
-              <span className="text-xs text-gray-500 hidden sm:block">
-                {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
-            <div className="flex items-center gap-1.5 text-sm">
-              <span className="w-2 h-2 bg-[var(--primary)] rounded-full animate-pulse" />
-              <span className="text-gray-400 hidden sm:inline text-xs">En vivo</span>
-            </div>
-
-            {/* Connect button */}
-            <button
-              onClick={() => setShowConnectModal(true)}
-              className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black text-xs font-semibold hover:opacity-90 transition-opacity"
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400 hidden sm:flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
+              {PRICES_DEMO[tickerIdx]}
+            </span>
+            <Link
+              href="/chat"
+              className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black text-sm font-semibold hover:opacity-90 transition-opacity"
             >
-              {connected.length > 0 ? `🔗 ${connected.length} conectado${connected.length > 1 ? 's' : ''}` : '🔗 Conectar'}
-            </button>
-
-            <button
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="md:hidden p-2 rounded-lg bg-black/30 border border-[var(--border)]"
-            >
-              📊
-            </button>
+              Abrir app →
+            </Link>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <div className="flex-1 flex max-w-6xl mx-auto w-full relative">
-        {/* Sidebar */}
-        <aside className={`
-          ${showSidebar ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0
-          fixed md:relative
-          left-0 top-[60px] md:top-0
-          w-64 h-[calc(100vh-60px)] md:h-auto
-          border-r border-[var(--border)] p-4
-          bg-[var(--card-bg)] backdrop-blur-md
-          transition-transform duration-300
-          z-40 overflow-y-auto
-        `}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-semibold text-gray-400">📊 MERCADO EN VIVO</h2>
-            <button onClick={() => setShowSidebar(false)} className="md:hidden text-gray-400">✕</button>
-          </div>
-          <div className="space-y-3">
-            {Object.entries(prices).map(([symbol, data]) => (
-              <div key={symbol} className="p-3 rounded-lg bg-black/30 border border-[var(--border)] hover:border-[var(--primary)] transition-colors">
-                <div className="flex justify-between items-center">
-                  <span className="font-semibold">{symbol}</span>
-                  <span className={`text-sm font-medium ${data.change > 0 ? 'text-green-400' : data.change < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                    {data.change > 0 ? '▲' : data.change < 0 ? '▼' : '•'} {Math.abs(data.change).toFixed(2)}%
-                  </span>
-                </div>
-                <div className="text-sm text-gray-300">${data.price.toLocaleString()}</div>
-                <div className="text-xs text-gray-500 mt-1">H: ${data.high24h?.toLocaleString()} · L: ${data.low24h?.toLocaleString()}</div>
+      {/* ── Hero ──────────────────────────────────────────────── */}
+      <section className="flex-1 flex flex-col items-center justify-center text-center px-4 py-20 relative overflow-hidden">
+        {/* Glow background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-[var(--primary)]/5 blur-[120px]" />
+          <div className="absolute top-1/2 left-1/4 w-[300px] h-[300px] rounded-full bg-[var(--secondary)]/5 blur-[100px]" />
+        </div>
+
+        {/* Badge */}
+        <div className="mb-6 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/30 text-xs text-[var(--primary)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] animate-pulse" />
+          Hecho para LatAm · Crypto sin miedo
+        </div>
+
+        {/* Title */}
+        <h1 className="text-4xl sm:text-6xl font-black mb-6 leading-tight">
+          Tu agente crypto
+          <br />
+          <span className="bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] bg-clip-text text-transparent">
+            personal
+          </span>
+        </h1>
+
+        <p className="text-lg sm:text-xl text-gray-400 max-w-xl mb-8 leading-relaxed">
+          Pregúntale en español. Él analiza, opera y registra.
+          <br className="hidden sm:block" />
+          Tú solo autorizas. <strong className="text-white">Simple.</strong>
+        </p>
+
+        {/* CTA */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link
+            href="/chat"
+            className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black font-bold text-base hover:opacity-90 transition-opacity active:scale-95"
+          >
+            Empezar gratis 🛸
+          </Link>
+          <a
+            href="#como-funciona"
+            className="px-8 py-3.5 rounded-xl bg-black/30 border border-[var(--border)] text-white font-semibold text-base hover:border-[var(--primary)] transition-colors"
+          >
+            Ver cómo funciona
+          </a>
+        </div>
+
+        {/* Social proof */}
+        <p className="mt-8 text-xs text-gray-500">
+          Compatible con Bitso · Binance · Bybit · Ledger · MetaMask
+        </p>
+      </section>
+
+      {/* ── Cómo funciona ─────────────────────────────────────── */}
+      <section id="como-funciona" className="py-20 px-4 border-t border-[var(--border)]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">Cómo funciona</h2>
+          <p className="text-center text-gray-400 mb-12">Tres pasos y ya estás operando</p>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {STEPS.map(step => (
+              <div key={step.n} className="relative p-6 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
+                <div className="text-4xl font-black text-[var(--primary)]/20 mb-4">{step.n}</div>
+                <h3 className="font-bold text-lg mb-2">{step.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Portfolio */}
-          <div className="mt-6">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-sm font-semibold text-gray-400">💰 MI PORTAFOLIO</h2>
-              {totalMXN > 0 && (
-                <span className="text-xs text-[var(--primary)] font-semibold">~${totalMXN.toLocaleString()} MXN</span>
-              )}
-            </div>
-
-            {connected.length === 0 ? (
-              <button
-                onClick={() => setShowConnectModal(true)}
-                className="w-full p-3 rounded-lg border border-dashed border-[var(--border)] text-xs text-gray-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors text-center"
-              >
-                + Conectar exchange o cartera
-              </button>
-            ) : (
-              <div className="space-y-2 text-sm">
-                {connected.map(acc => {
-                  const accBalances = wallet.filter(b => b.exchange === acc.id);
-                  return (
-                    <div key={acc.id} className="p-2 rounded-lg bg-black/20 border border-[var(--border)]">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-xs font-semibold text-[var(--primary)]">{acc.label}</span>
-                        {acc.type === 'wallet' && <span className="text-[10px] text-gray-500">🧊 solo lectura</span>}
-                      </div>
-                      {accBalances.length === 0 ? (
-                        <div className="text-xs text-gray-500">Sin saldo</div>
-                      ) : (
-                        accBalances.map(b => (
-                          <div key={b.symbol} className="flex justify-between text-xs">
-                            <span className="text-gray-400">{b.symbol}</span>
-                            <span>{b.total < 0.001 ? b.total.toExponential(2) : b.total.toFixed(4)}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  );
-                })}
-
-                <button
-                  onClick={() => setShowConnectModal(true)}
-                  className="w-full p-2 rounded-lg border border-dashed border-[var(--border)] text-xs text-gray-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
-                >
-                  + Agregar cuenta
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Portfolio chart */}
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold text-gray-400 mb-3">📈 MI RENDIMIENTO</h2>
-            {portfolio && currentPortfolioValue > 0 ? (
-              <PortfolioChart portfolio={portfolio} currentValueMXN={currentPortfolioValue} />
-            ) : (
-              <button
-                onClick={() => {
-                  setInput('cómo voy');
-                  // trigger send manually after state update
-                  setTimeout(() => {
-                    const syntheticMsg: Message = {
-                      id: Date.now(), type: 'agent',
-                      content: '📊 Para llevar tu registro necesito saber con cuánto empezaste.\n\n¿Cuál fue tu **capital inicial** en MXN? (ejemplo: "empecé con $10,000")',
-                    };
-                    setMessages(prev => [...prev, syntheticMsg]);
-                    setAwaitingCapital(true);
-                    setInput('');
-                    setShowSidebar(false);
-                  }, 100);
-                }}
-                className="w-full p-3 rounded-xl border border-dashed border-[var(--border)] text-xs text-gray-500 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors text-center"
-              >
-                📊 Registrar capital inicial
-              </button>
-            )}
-          </div>
-
-          {/* Market summary */}
-          <div className="mt-4 p-3 rounded-lg bg-gradient-to-br from-[var(--primary)]/10 to-[var(--secondary)]/10 border border-[var(--primary)]/30">
-            <h3 className="text-sm font-semibold mb-2">🧠 Resumen rápido</h3>
-            <p className="text-xs text-gray-300">
-              {prices.BTC?.change > 2
-                ? '📈 Mercado alcista. Cuidado con comprar en la cima.'
-                : prices.BTC?.change < -2
-                ? '📉 Mercado en corrección. Posible oportunidad.'
-                : '➡️ Mercado estable. Buen momento para planear.'}
-            </p>
-          </div>
-        </aside>
-
-        {showSidebar && (
-          <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setShowSidebar(false)} />
-        )}
-
-        {/* Chat */}
-        <main className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map(message => (
-              <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {message.type === 'permission' && message.permissionData ? (
-                  <div className="max-w-[90%] sm:max-w-md w-full">
-                    <div className={`p-4 rounded-xl border-2 ${
-                      message.permissionData.status === 'pending' ? 'border-yellow-500 bg-yellow-500/10'
-                      : message.permissionData.status === 'approved' ? 'border-green-500 bg-green-500/10'
-                      : 'border-red-500 bg-red-500/10'
-                    }`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xl">🔐</span>
-                        <span className="font-semibold">Autorización Requerida</span>
-                      </div>
-                      <p className="font-medium text-[var(--primary)]">{message.permissionData.action}</p>
-                      <p className="text-sm text-gray-300 mt-1">{message.permissionData.details}</p>
-                      {message.permissionData.status === 'pending' ? (
-                        <div className="flex gap-2 mt-4">
-                          <button onClick={() => handlePermission(message.id, true)} className="flex-1 py-2 px-4 bg-[var(--primary)] text-black font-semibold rounded-lg hover:opacity-90 transition-opacity active:scale-95">
-                            ✓ Autorizar
-                          </button>
-                          <button onClick={() => handlePermission(message.id, false)} className="flex-1 py-2 px-4 bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/50 hover:bg-red-500/30 transition-colors active:scale-95">
-                            ✗ Rechazar
-                          </button>
-                        </div>
-                      ) : (
-                        <div className={`mt-3 text-sm font-medium ${message.permissionData.status === 'approved' ? 'text-green-400' : 'text-red-400'}`}>
-                          {message.permissionData.status === 'approved' ? '✅ Autorizado' : '❌ Rechazado'}
-                        </div>
-                      )}
-                    </div>
+      {/* ── Chat demo ─────────────────────────────────────────── */}
+      <section className="py-20 px-4 bg-black/20">
+        <div className="max-w-lg mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">Habla normal</h2>
+          <p className="text-center text-gray-400 mb-10">Sin tecnicismos. Sin buscar tutoriales.</p>
+          <div className="rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] p-4 space-y-3">
+            {[
+              { type: 'user', text: '¿Es buen momento para comprar Bitcoin?' },
+              { type: 'agent', text: '🧠 Bitcoin bajó 3.2% hoy. Está en corrección moderada — posible oportunidad de compra. ¿Quieres que compre una pequeña cantidad?' },
+              { type: 'user', text: 'Sí, compra $500 MXN en BTC' },
+              { type: 'agent', text: '🔐 Voy a comprar ~0.000051 BTC ($500 MXN) en Bitso. ¿Autorizas?' },
+              { type: 'permission', text: '✓ Autorizar · ✗ Rechazar' },
+              { type: 'agent', text: '✅ ¡Listo! Compraste 0.000051 BTC. Tu saldo se actualizó. 🛸' },
+            ].map((msg, i) => (
+              <div key={i} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.type === 'permission' ? (
+                  <div className="w-full p-3 rounded-xl border-2 border-yellow-500/50 bg-yellow-500/5 text-sm text-center text-yellow-400 font-medium">
+                    🔐 {msg.text}
                   </div>
                 ) : (
-                  <div className={`max-w-[85%] sm:max-w-md p-4 rounded-2xl ${
-                    message.type === 'user'
-                      ? 'bg-[var(--primary)] text-black rounded-br-md'
-                      : 'bg-[var(--card-bg)] border border-[var(--border)] rounded-bl-md'
+                  <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
+                    msg.type === 'user'
+                      ? 'bg-[var(--primary)] text-black rounded-br-sm'
+                      : 'bg-black/40 border border-[var(--border)] rounded-bl-sm'
                   }`}>
-                    <div className="text-sm sm:text-base">{formatText(message.content)}</div>
+                    {msg.text}
                   </div>
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
 
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-2xl rounded-bl-md">
-                  <span className="typing-cursor">eelienX está pensando</span>
-                </div>
+      {/* ── Features ──────────────────────────────────────────── */}
+      <section className="py-20 px-4 border-t border-[var(--border)]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">Todo en un lugar</h2>
+          <p className="text-center text-gray-400 mb-12">Sin apps extra. Sin hojas de cálculo.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map(f => (
+              <div key={f.title} className="p-5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-[var(--primary)]/50 transition-colors group">
+                <div className="text-3xl mb-3">{f.icon}</div>
+                <h3 className="font-bold mb-2 group-hover:text-[var(--primary)] transition-colors">{f.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{f.desc}</p>
               </div>
-            )}
-            <div ref={messagesEndRef} />
+            ))}
           </div>
+        </div>
+      </section>
 
-          {/* Input */}
-          <div className="p-3 sm:p-4 border-t border-[var(--border)] bg-[var(--card-bg)] backdrop-blur-md">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSend()}
-                placeholder="Escribe tu mensaje..."
-                className="flex-1 bg-black/50 border border-[var(--border)] rounded-xl px-4 py-3 focus:outline-none focus:border-[var(--primary)] transition-colors placeholder:text-gray-500 text-sm sm:text-base"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() || isTyping}
-                className="px-4 sm:px-6 py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
-              >
-                <span className="hidden sm:inline">Enviar</span> 🛸
-              </button>
-            </div>
-            <div className="mt-2 flex gap-2 flex-wrap">
-              {['📊 Precios', '🧠 Análisis', '💰 Saldo', '📈 Cómo voy', '🔗 Conectar', '❓ Ayuda'].map(suggestion => (
-                <button
-                  key={suggestion}
-                  onClick={() => setInput(suggestion.split(' ').slice(1).join(' ').toLowerCase())}
-                  className="text-xs px-3 py-1.5 rounded-full bg-black/30 border border-[var(--border)] text-gray-400 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors active:scale-95"
+      {/* ── Pricing ───────────────────────────────────────────── */}
+      <section className="py-20 px-4 bg-black/20 border-t border-[var(--border)]">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-3">Planes</h2>
+          <p className="text-center text-gray-400 mb-12">Empieza gratis. Escala cuando lo necesites.</p>
+          <div className="grid sm:grid-cols-3 gap-6">
+            {PLANS.map(plan => (
+              <div key={plan.name} className={`relative p-6 rounded-2xl bg-[var(--card-bg)] border-2 ${plan.color} flex flex-col`}>
+                {plan.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-[var(--primary)] text-black text-xs font-bold">
+                    Más popular
+                  </div>
+                )}
+                <div className="mb-4">
+                  <h3 className="font-bold text-lg">{plan.name}</h3>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span className="text-3xl font-black">{plan.price}</span>
+                    <span className="text-sm text-gray-400">{plan.period}</span>
+                  </div>
+                </div>
+                <ul className="space-y-2 flex-1 mb-6">
+                  {plan.features.map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
+                      <span className="text-[var(--primary)] mt-0.5">✓</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/chat"
+                  className={`w-full py-2.5 rounded-xl text-center font-semibold text-sm transition-opacity hover:opacity-90 active:scale-95 ${
+                    plan.highlight
+                      ? 'bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black'
+                      : 'bg-black/40 border border-[var(--border)] text-white'
+                  }`}
                 >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+                  {plan.cta}
+                </Link>
+              </div>
+            ))}
           </div>
-        </main>
-      </div>
+        </div>
+      </section>
 
-      {showConnectModal && (
-        <ExchangeConnectModal
-          onClose={() => setShowConnectModal(false)}
-          onConnected={handleConnected}
-        />
-      )}
+      {/* ── CTA final ─────────────────────────────────────────── */}
+      <section className="py-20 px-4 border-t border-[var(--border)] text-center">
+        <div className="max-w-xl mx-auto">
+          <div className="text-5xl mb-6">👽</div>
+          <h2 className="text-3xl font-bold mb-4">¿Lista para dejar de adivinar?</h2>
+          <p className="text-gray-400 mb-8">
+            eelienX no promete hacerte millonaria. Te promete que vas a entender qué está pasando con tu crypto y que nunca vas a operar sola.
+          </p>
+          <Link
+            href="/chat"
+            className="inline-block px-10 py-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black font-bold text-lg hover:opacity-90 transition-opacity active:scale-95"
+          >
+            Empezar ahora · Es gratis 🛸
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Footer ────────────────────────────────────────────── */}
+      <footer className="border-t border-[var(--border)] py-6 px-4">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-gray-500">
+          <span>© 2026 eelienX Protocol · Hecho en México 🇲🇽</span>
+          <span>Precios via CoinGecko · No somos asesores financieros</span>
+        </div>
+      </footer>
+
     </div>
   );
 }
