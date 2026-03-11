@@ -21,14 +21,19 @@ export function decrypt(encryptedJson: string, key: Buffer): string {
 }
 
 // ─── Derivar llave de 32 bytes desde contraseña + salt ───────────────────────
+// salt debe ser aleatorio (guardado en DB), NO el email
 
-export function deriveKey(password: string, salt: string): Buffer {
-  return crypto.pbkdf2Sync(password, salt, 100_000, 32, 'sha256');
+export async function deriveKey(password: string, salt: string): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    crypto.pbkdf2(password, salt, 100_000, 32, 'sha256', (err, key) => {
+      if (err) reject(err);
+      else resolve(key);
+    });
+  });
 }
 
-// ─── Llave de env (para compatibilidad legacy) ───────────────────────────────
+// ─── Generar salt aleatorio para PBKDF2 ──────────────────────────────────────
 
-export function getEnvKey(): Buffer {
-  const k = (process.env.ENCRYPTION_KEY || 'eelienx-dev-key-32chars-padded!!').slice(0, 32);
-  return Buffer.from(k, 'utf-8');
+export function generateSalt(): string {
+  return crypto.randomBytes(32).toString('hex');
 }

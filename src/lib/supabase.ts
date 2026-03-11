@@ -1,7 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Lazy init — evita errores en build sin env vars
+let _client: SupabaseClient | null = null;
 
-// Server-side client (bypasses RLS — solo usar en API routes)
-export const supabaseAdmin = createClient(url, serviceKey);
+export function getSupabaseAdmin(): SupabaseClient {
+  if (_client) return _client;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('Supabase env vars not set (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)');
+  _client = createClient(url, key);
+  return _client;
+}
+
+// Alias para compatibilidad
+export const supabaseAdmin = new Proxy({} as SupabaseClient, {
+  get(_, prop) {
+    return (getSupabaseAdmin() as any)[prop];
+  },
+});

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { clearSessionCookies } from '@/lib/session';
 
 export async function POST() {
   const res = NextResponse.json({ success: true });
-  res.cookies.set('eelienx_session', '', { maxAge: 0, path: '/' });
+  clearSessionCookies(res);
   return res;
 }

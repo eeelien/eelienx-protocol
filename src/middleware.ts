@@ -15,7 +15,11 @@ async function verifyToken(token: string): Promise<boolean> {
 }
 
 export async function middleware(req: NextRequest) {
+  // Require all 3 session cookies to consider the session valid
+  const mkCookie = req.cookies.get('eelienx_mk')?.value;
+  const skCookie = req.cookies.get('eelienx_sk')?.value;
   const token = req.cookies.get('eelienx_session')?.value;
+  const hasFullSession = !!(token && mkCookie && skCookie);
   const { pathname } = req.nextUrl;
 
   const isProtected =
@@ -26,12 +30,12 @@ export async function middleware(req: NextRequest) {
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
 
   if (isProtected) {
-    if (!token || !(await verifyToken(token))) {
+    if (!hasFullSession || !(await verifyToken(token!))) {
       return NextResponse.redirect(new URL('/login', req.url));
     }
   }
 
-  if (isAuthPage && token && (await verifyToken(token))) {
+  if (isAuthPage && hasFullSession && token && (await verifyToken(token))) {
     return NextResponse.redirect(new URL('/chat', req.url));
   }
 
