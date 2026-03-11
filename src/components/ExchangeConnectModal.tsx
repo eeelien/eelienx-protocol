@@ -60,6 +60,7 @@ const WALLETS = [
 
 export default function ExchangeConnectModal({ onClose, onConnected }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('bitso');
+  const [bitsoStep, setBitsoStep] = useState<'guide' | 'form'>('guide');
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
   const [address, setAddress] = useState('');
@@ -83,6 +84,7 @@ export default function ExchangeConnectModal({ onClose, onConnected }: Props) {
     setApiSecret('');
     setAddress('');
     setError('');
+    if (tab === 'bitso') setBitsoStep('guide');
   };
 
   const handleConnect = async () => {
@@ -176,18 +178,68 @@ export default function ExchangeConnectModal({ onClose, onConnected }: Props) {
         {/* Form */}
         <div className="p-6 pt-2 space-y-4">
 
-          {/* Exchange form */}
-          {isExchange && activeExchange && (
-            <>
-              <div className="p-3 rounded-lg bg-black/30 border border-[var(--border)] text-xs text-gray-400">
-                📋 Crea tu API Key en{' '}
-                <a href={activeExchange.docsUrl} target="_blank" rel="noreferrer" className="text-[var(--primary)] hover:underline">
-                  {activeExchange.docsLabel}
-                </a>
-                {activeExchange.id === 'bitso' && (
-                  <span> · Activa permisos: <strong className="text-white">Balance + Trading</strong> (NO Withdrawal)</span>
-                )}
+          {/* Bitso: guía paso a paso */}
+          {activeTab === 'bitso' && bitsoStep === 'guide' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-semibold text-white">Cómo crear tu API Key en Bitso</p>
+                <span className="text-xs px-2 py-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 font-medium">
+                  🔒 Tu contraseña nunca la vemos
+                </span>
               </div>
+              <div className="space-y-2">
+                {[
+                  { n: 1, text: <>Entra a <a href="https://bitso.com" target="_blank" rel="noreferrer" className="text-[var(--primary)] hover:underline">bitso.com</a> e inicia sesión</> },
+                  { n: 2, text: <>Haz clic en tu foto de perfil (arriba a la derecha) → <strong className="text-white">Configuración de cuenta</strong></> },
+                  { n: 3, text: <>En el menú lateral izquierdo selecciona <strong className="text-white">API Keys</strong></> },
+                  { n: 4, text: <>Haz clic en <strong className="text-white">Crear API Key</strong></> },
+                  { n: 5, text: <><strong className="text-yellow-400">⚠️ Permisos:</strong> activa solo <strong className="text-white">Ver saldo</strong> y <strong className="text-white">Ver órdenes</strong>. <span className="text-red-400">NUNCA actives Retiros</span></> },
+                  { n: 6, text: <>Copia tu <strong className="text-white">API Key</strong> y <strong className="text-white">API Secret</strong> — el Secret solo se muestra una vez</> },
+                ].map(step => (
+                  <div key={step.n} className="flex gap-3 items-start p-2 rounded-lg bg-black/20 border border-[var(--border)]/50">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--primary)]/20 border border-[var(--primary)]/40 text-[var(--primary)] text-xs font-bold flex items-center justify-center">
+                      {step.n}
+                    </span>
+                    <span className="text-xs text-gray-300 leading-relaxed">{step.text}</span>
+                  </div>
+                ))}
+              </div>
+              <a
+                href="https://bitso.com/r/security/api"
+                target="_blank"
+                rel="noreferrer"
+                className="block text-center text-xs text-[var(--primary)] hover:underline mt-1"
+              >
+                Ir directo a API Keys de Bitso →
+              </a>
+              <button
+                onClick={() => setBitsoStep('form')}
+                className="w-full py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity text-sm mt-1"
+              >
+                Ya tengo mi API Key →
+              </button>
+            </div>
+          )}
+
+          {/* Exchange form (Bitso en step form + Binance + Bybit) */}
+          {isExchange && activeExchange && (activeTab !== 'bitso' || bitsoStep === 'form') && (
+            <>
+              {activeTab === 'bitso' && (
+                <button
+                  onClick={() => setBitsoStep('guide')}
+                  className="text-xs text-gray-400 hover:text-[var(--primary)] transition-colors mb-1"
+                >
+                  ← Ver instrucciones
+                </button>
+              )}
+              {activeTab !== 'bitso' && (
+                <div className="p-3 rounded-lg bg-black/30 border border-[var(--border)] text-xs text-gray-400">
+                  📋 Crea tu API Key en{' '}
+                  <a href={activeExchange.docsUrl} target="_blank" rel="noreferrer" className="text-[var(--primary)] hover:underline">
+                    {activeExchange.docsLabel}
+                  </a>
+                </div>
+              )}
               <input
                 type="text"
                 placeholder="API Key"
@@ -244,23 +296,27 @@ export default function ExchangeConnectModal({ onClose, onConnected }: Props) {
             </div>
           )}
 
-          <button
-            onClick={handleConnect}
-            disabled={!canSubmit}
-            className="w-full py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] text-sm"
-          >
-            {loading
-              ? 'Verificando...'
-              : isWallet
-              ? '🔍 Leer saldo'
-              : `🔗 Conectar ${activeExchange?.name}`}
-          </button>
+          {(activeTab !== 'bitso' || bitsoStep === 'form') && (
+            <>
+              <button
+                onClick={handleConnect}
+                disabled={!canSubmit}
+                className="w-full py-3 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] text-sm"
+              >
+                {loading
+                  ? 'Verificando...'
+                  : isWallet
+                  ? '🔍 Leer saldo'
+                  : `🔗 Conectar ${activeExchange?.name}`}
+              </button>
 
-          <p className="text-xs text-gray-500 text-center">
-            {isExchange
-              ? 'Tus API Keys se cifran con AES-256. Nunca se comparten con terceros.'
-              : 'Tu dirección pública no permite hacer transacciones. Es como darte tu CLABE para que te depositen.'}
-          </p>
+              <p className="text-xs text-gray-500 text-center">
+                {isExchange
+                  ? 'Tus API Keys se cifran con AES-256. Nunca se comparten con terceros.'
+                  : 'Tu dirección pública no permite hacer transacciones. Es como darte tu CLABE para que te depositen.'}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
