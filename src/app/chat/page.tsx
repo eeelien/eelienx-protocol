@@ -590,7 +590,7 @@ export default function Home() {
     if (lower.includes('avísame') || lower.includes('avisame') || lower.includes('alerta') || lower.includes('notifícame')) {
       const parsed = parseAlert(currentInput);
       if (parsed) {
-        const newAlert: PriceAlert = { ...parsed, triggered: false };
+        const newAlert: PriceAlert = { symbol: parsed.symbol, targetPrice: parsed.price, direction: parsed.direction, triggered: false };
         const updatedAlerts = [...alerts, newAlert];
         saveAlerts(updatedAlerts);
         setAlerts(updatedAlerts);
