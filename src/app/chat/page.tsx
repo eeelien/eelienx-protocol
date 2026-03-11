@@ -9,6 +9,34 @@ import {
   parseHoldings, parseCapital, PortfolioState,
 } from '@/lib/portfolio';
 
+// ─── Buy intent parser ────────────────────────────────────────────────────────
+
+const CRYPTO_NAME_MAP: Record<string, string> = {
+  bitcoin: 'BTC', btc: 'BTC',
+  ethereum: 'ETH', eth: 'ETH',
+  solana: 'SOL', sol: 'SOL',
+  bnb: 'BNB',
+  doge: 'DOGE', dogecoin: 'DOGE',
+  xrp: 'XRP', ripple: 'XRP',
+  avax: 'AVAX', avalanche: 'AVAX',
+  ada: 'ADA', cardano: 'ADA',
+  matic: 'MATIC', polygon: 'MATIC',
+  usdt: 'USDT',
+};
+
+function parseBuyIntent(text: string): { symbol: string; amountMXN: number } | null {
+  const m =
+    text.match(/compra[rm]e?\s+\$?\s*([\d,]+)\s*(?:pesos?|mxn)?\s*(?:de\s+)?(\w+)/i) ||
+    text.match(/quiero\s+comprar\s+\$?\s*([\d,]+)\s*(?:pesos?|mxn)?\s*(?:de\s+)?(\w+)/i) ||
+    text.match(/compra[rm]e?\s+(\w+)\s+por\s+\$?\s*([\d,]+)/i);
+  if (!m) return null;
+  const amountRaw = m[1].replace(/,/g, '');
+  const amountMXN = parseFloat(amountRaw);
+  const symbol = CRYPTO_NAME_MAP[m[2]?.toLowerCase()];
+  if (!amountMXN || !symbol || amountMXN < 10) return null;
+  return { symbol, amountMXN };
+}
+
 // ─── Alert system ─────────────────────────────────────────────────────────────
 interface PriceAlert { symbol: string; targetPrice: number; direction: 'above' | 'below'; triggered: boolean }
 
@@ -245,6 +273,7 @@ export default function Home() {
   const [currentPortfolioValue, setCurrentPortfolioValue] = useState(0);
   const [awaitingCapital, setAwaitingCapital] = useState(false);
   const [pendingHoldings, setPendingHoldings] = useState<{ symbol: string; amount: number }[]>([]);
+  const [pendingOrder, setPendingOrder] = useState<{ symbol: string; amountMXN: number; exchange: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch precios en tiempo real — 10 monedas
@@ -376,6 +405,86 @@ export default function Home() {
     await new Promise(r => setTimeout(r, 700 + Math.random() * 500));
 
     const lower = currentInput.toLowerCase();
+
+    // ── Pending order: confirmación o cancelación ────────────────────────────
+    if (pendingOrder) {
+      if (/^(sí|si|confirmar|confirma|dale|hazlo|ok|yes|ejecuta|ejecutar|adelante|va|ándale|andale)$/i.test(lower.trim())) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: '⏳ Ejecutando orden en Bitso...',
+        }]);
+        setIsTyping(false);
+        try {
+          const res = await fetch('/api/agent-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'buy',
+              exchange: pendingOrder.exchange,
+              symbol: pendingOrder.symbol,
+              amountMXN: pendingOrder.amountMXN,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            const s = data.summary;
+            setMessages(prev => [...prev, {
+              id: Date.now() + 2, type: 'agent',
+              content: `✅ **¡Orden ejecutada en Bitso!**\n\n🪙 Compraste: **${s.cryptoBought} ${s.symbol}**\n💵 Pagaste: **$${s.amountMXN.toLocaleString()} MXN**\n📈 Precio: **$${s.priceMXN.toLocaleString()} MXN**\n\nTu saldo se actualizará en segundos. 🛸`,
+            }]);
+            fetchBalances();
+          } else {
+            setMessages(prev => [...prev, {
+              id: Date.now() + 2, type: 'agent',
+              content: `❌ No se pudo ejecutar: ${data.message}`,
+            }]);
+          }
+        } catch {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 2, type: 'agent',
+            content: '❌ Error de conexión. Intenta de nuevo.',
+          }]);
+        }
+        setPendingOrder(null);
+        return;
+      }
+      if (/no|cancel|olvid/i.test(lower)) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: 'Ok, cancelado. No se realizó ningún movimiento. ¿En qué más puedo ayudarte? 🛸',
+        }]);
+        setPendingOrder(null);
+        setIsTyping(false);
+        return;
+      }
+    }
+
+    // ── Detección de intención de compra ─────────────────────────────────────
+    const buyIntent = parseBuyIntent(currentInput);
+    if (buyIntent) {
+      const bitsoConnected = connected.find(c => c.id === 'bitso');
+      if (!bitsoConnected) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'agent',
+          content: 'Primero necesito que conectes tu cuenta de Bitso. Escribe **conectar** o usa el botón de arriba. 🔗',
+        }]);
+        setIsTyping(false);
+        return;
+      }
+      const { symbol, amountMXN } = buyIntent;
+      const priceUSD = prices[symbol]?.price;
+      // Estimate MXN price (rough: 1 USD ≈ 17.5 MXN)
+      const priceMXN = priceUSD ? priceUSD * 17.5 : null;
+      const priceInfo = priceMXN ? `$${Math.round(priceMXN).toLocaleString()} MXN` : 'precio de mercado actual';
+      const cryptoEst = priceMXN ? (amountMXN / priceMXN).toFixed(6) : '...';
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1, type: 'agent',
+        content: `🛸 **¿Confirmas esta operación?**\n\n• Comprar: **$${amountMXN.toLocaleString()} MXN** de **${symbol}**\n• Precio aprox: ${priceInfo}\n• Recibirías: ~**${cryptoEst} ${symbol}**\n\nResponde **"sí"** para ejecutar o **"no"** para cancelar.`,
+      }]);
+      setPendingOrder({ symbol, amountMXN, exchange: 'bitso' });
+      setIsTyping(false);
+      return;
+    }
 
     // ── Portfolio tracking flow ──────────────────────────────────────────────
 
