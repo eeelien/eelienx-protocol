@@ -103,7 +103,7 @@ const textAccent: Record<string, string> = {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-type Step = 'profile' | 'method' | 'strategy' | 'risk';
+type Step = 'profile' | 'stocks' | 'method' | 'strategy' | 'risk';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -175,7 +175,7 @@ export default function OnboardingPage() {
         <p className="text-gray-500 text-sm">Elige tu estilo — puedes cambiar cuando quieras.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-5 w-full max-w-2xl">
+      <div className="flex flex-col sm:flex-row gap-5 w-full max-w-2xl flex-wrap">
         {/* Hodler */}
         <button onClick={() => handleProfileSelect('hodler')}
           className="flex-1 rounded-2xl border-2 border-blue-500/40 bg-blue-500/5 hover:border-blue-400 hover:bg-blue-500/10 p-7 text-left transition-all cursor-pointer group">
@@ -199,14 +199,82 @@ export default function OnboardingPage() {
           <div className="text-5xl mb-4">🔥</div>
           <h2 className="text-xl font-bold mb-1">Tradear</h2>
           <p className="text-orange-300 text-sm font-medium mb-4">Operaciones rápidas y activas</p>
-          <ul className="space-y-2 text-sm text-gray-300">
-            <li className="flex gap-2"><span className="text-orange-400">✓</span> Entra y sal del mercado cuando quieras</li>
-            <li className="flex gap-2"><span className="text-orange-400">✓</span> Análisis técnico antes de cada operación</li>
-            <li className="flex gap-2"><span className="text-orange-400">✓</span> Copia a traders exitosos del momento</li>
-            <li className="flex gap-2"><span className="text-orange-400">✓</span> Tú confirmas antes de cada orden</li>
+          <ul className="space-y-2 text-sm text-gray-300 mb-4">
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Entra y sal del mercado cuando quieras</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Análisis técnico antes de cada operación</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Copia a traders exitosos del momento</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Mayor potencial de ganancia rápida</li>
+            <li className="flex gap-2"><span className="text-red-400">✗</span> Mayor riesgo — puedes perder rápido</li>
+            <li className="flex gap-2"><span className="text-red-400">✗</span> Requiere atención constante al mercado</li>
           </ul>
           <div className="mt-3 text-orange-400 font-semibold text-sm group-hover:underline">Elegir Tradear →</div>
         </button>
+
+        {/* Acciones */}
+        <button onClick={() => { setProfile('trader'); setStep('stocks'); }}
+          className="flex-1 min-w-[220px] rounded-2xl border-2 border-green-500/40 bg-green-500/5 hover:border-green-400 hover:bg-green-500/10 p-7 text-left transition-all cursor-pointer group">
+          <div className="text-5xl mb-4">📈</div>
+          <h2 className="text-xl font-bold mb-1">Acciones</h2>
+          <p className="text-green-300 text-sm font-medium mb-4">Invierte en empresas reales</p>
+          <ul className="space-y-2 text-sm text-gray-300 mb-4">
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Apple, Tesla, Amazon, S&P500</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Más estable que crypto</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Opción de holdear o tradear activo</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> El agente analiza y ejecuta con tu OK</li>
+            <li className="flex gap-2"><span className="text-red-400">✗</span> Horario de mercado (lun–vie)</li>
+            <li className="flex gap-2"><span className="text-red-400">✗</span> Rendimientos más lentos que crypto</li>
+          </ul>
+          <div className="mt-3 text-green-400 font-semibold text-sm group-hover:underline">Elegir Acciones →</div>
+        </button>
+      </div>
+    </main>
+  );
+
+  // ── Step: Stocks mode ──
+  if (step === 'stocks') return (
+    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-12">
+      <div className="w-full max-w-xl">
+        <button onClick={() => setStep('profile')} className="mb-6 text-gray-600 hover:text-white text-sm">← Volver</button>
+
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3">📈</div>
+          <h1 className="text-2xl font-bold mb-2">¿Cómo quieres invertir en acciones?</h1>
+          <p className="text-gray-500 text-sm">Elige tu estilo — el agente se adapta.</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-5">
+          {/* Invertir largo plazo */}
+          <button
+            onClick={() => { setProfile('hodler'); setMethod('manual'); localStorage.setItem('eelienx_asset', 'stocks'); setStep('risk'); }}
+            className="flex-1 rounded-2xl border-2 border-blue-500/40 bg-blue-500/5 hover:border-blue-400 p-6 text-left transition-all cursor-pointer group">
+            <div className="text-4xl mb-3">🏦</div>
+            <h2 className="text-lg font-bold mb-1">Invertir</h2>
+            <p className="text-blue-300 text-sm font-medium mb-4">Tipo holdeo — menos riesgo</p>
+            <ul className="space-y-2 text-sm text-gray-300">
+              <li className="flex gap-2"><span className="text-green-400">✓</span> Compra acciones y las mantienes</li>
+              <li className="flex gap-2"><span className="text-green-400">✓</span> Dividendos + crecimiento a largo plazo</li>
+              <li className="flex gap-2"><span className="text-green-400">✓</span> Estrategia de Buffett, Lynch, Cathie Wood</li>
+              <li className="flex gap-2"><span className="text-red-400">✗</span> Rendimientos más lentos</li>
+            </ul>
+            <div className="mt-4 text-blue-400 font-semibold text-sm group-hover:underline">Elegir Invertir →</div>
+          </button>
+
+          {/* Tradear acciones */}
+          <button
+            onClick={() => { setProfile('trader'); setMethod('manual'); localStorage.setItem('eelienx_asset', 'stocks'); setStep('risk'); }}
+            className="flex-1 rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 hover:border-orange-400 p-6 text-left transition-all cursor-pointer group">
+            <div className="text-4xl mb-3">⚡</div>
+            <h2 className="text-lg font-bold mb-1">Tradear acciones</h2>
+            <p className="text-orange-300 text-sm font-medium mb-4">Operaciones activas — más riesgo</p>
+            <ul className="space-y-2 text-sm text-gray-300">
+              <li className="flex gap-2"><span className="text-green-400">✓</span> Entra y sal en el mismo día (day trade)</li>
+              <li className="flex gap-2"><span className="text-green-400">✓</span> Análisis técnico en tiempo real</li>
+              <li className="flex gap-2"><span className="text-red-400">✗</span> Alto riesgo — requiere disciplina</li>
+              <li className="flex gap-2"><span className="text-red-400">✗</span> Solo en horario de mercado</li>
+            </ul>
+            <div className="mt-4 text-orange-400 font-semibold text-sm group-hover:underline">Elegir Tradear →</div>
+          </button>
+        </div>
       </div>
     </main>
   );
