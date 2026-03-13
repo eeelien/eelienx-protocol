@@ -185,7 +185,7 @@ function getAgentResponse(
     if (isTrader) return { response: '🔥 ¡Todo listo! Dime qué cripto tienes en la mira y te doy el análisis técnico antes de entrar.' };
     if (isHodler && method === 'copy') return { response: '🧊 ¡Hola! Escribe "empezar a holdear" para ver la recomendación activa de tu estrategia.' };
     if (isHodler) return { response: '🧊 ¡Hola! ¿Cómo va tu posición? Si quieres acumular más, dime qué cripto.' };
-    return { response: '¡Qué onda! 👽 Soy eelienX. ¿Qué necesitas?' };
+    return { response: 'Hola, soy eelienX 👽 ¿Qué necesitas?' };
   }
 
   if (lowerInput.includes('precio') || lowerInput.includes('cuánto está') || lowerInput.includes('cotización') || lowerInput.includes('cuanto vale')) {
@@ -332,7 +332,7 @@ function getAgentResponse(
 
 export default function Home() {
   const getWelcomeMessage = () => {
-    if (typeof window === 'undefined') return '👽 **¡Qué onda! Soy eelienX.** Tu agente crypto personal. ¿Por dónde empezamos?';
+    if (typeof window === 'undefined') return '👽 **Hola, soy eelienX.** Tu agente crypto personal. ¿Por dónde empezamos?';
     const profile   = localStorage.getItem('eelienx_profile');
     const method    = localStorage.getItem('eelienx_method');
     const strategyId = localStorage.getItem('eelienx_strategy');
@@ -350,7 +350,7 @@ export default function Home() {
       return `🔥 **¡Listo para operar!** Estás copiando a **${strategyNames[strategyId] || strategyId}**.\n\nAsí funciona:\n• Monitoreo sus señales en tiempo real\n• Te aviso cuando haga un movimiento\n• Te muestro el análisis técnico\n• **Tú confirmas antes de que ejecute**\n\nEscribe "copiar ahora" para ver la siguiente señal activa, o dime qué cripto quieres operar.`;
     }
     if (profile === 'trader' && method === 'manual') {
-      return '🔥 **¡Qué onda, trader!** Soy eelienX.\n\nModo manual activado. Tú decides cuándo entrar y salir — yo analizo y ejecuto.\n\nAsí trabajo:\n• 📊 Análisis técnico (RSI, soporte, resistencia) antes de cada operación\n• ⚡ Ejecuto la orden cuando me lo pidas\n• **Siempre y cuando tú me confirmes**\n\n¿Qué cripto tienes en la mira?';
+      return '🔥 **Hola, soy eelienX.**\n\nModo manual activado. Tú decides cuándo entrar y salir — yo analizo y ejecuto.\n\nAsí trabajo:\n• 📊 Análisis técnico (RSI, soporte, resistencia) antes de cada operación\n• ⚡ Ejecuto la orden cuando me lo pidas\n• **Siempre y cuando tú me confirmes**\n\n¿Qué cripto tienes en la mira?';
     }
     if (profile === 'hodler' && method === 'copy' && strategyId) {
       return `🧊 **¡Perfecto!** Estás replicando la estrategia de **${strategyNames[strategyId] || strategyId}**.\n\nPlan activo:\n• Acumular según la estrategia elegida\n• Te explico el contexto antes de cada compra\n• Horizonte largo plazo — no vendemos por pánico\n• **Tú confirmas antes de cualquier movimiento**\n\nEscribe "empezar a holdear" para ver la primera recomendación, o "precios" para ver el mercado.`;
@@ -358,7 +358,7 @@ export default function Home() {
     if (profile === 'hodler' && method === 'manual') {
       return '🧊 **¡Hola, hodler!** Soy eelienX.\n\nModo manual activado. Tú decides qué acumular — yo te doy el contexto histórico y ejecuto.\n\n• BTC ha subido ~200% por ciclo de 4 años\n• Estrategia comprobada: comprar y no vender\n• **Siempre con tu confirmación antes de entrar**\n\n¿Qué quieres acumular? ¿O prefieres ver precios primero?';
     }
-    return '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — **siempre y cuando tú me confirmes**\n\n¿Por dónde empezamos?';
+    return '👽 **Hola, soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — **siempre y cuando tú me confirmes**\n\n¿Por dónde empezamos?';
   };
 
   const [messages, setMessages] = useState<Message[]>([
