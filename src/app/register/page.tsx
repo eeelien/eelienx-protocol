@@ -84,7 +84,7 @@ export default function RegisterPage() {
             </label>
 
             <button
-              onClick={() => router.push('/chat')}
+              onClick={() => router.push('/onboarding')}
               disabled={!confirmed}
               className="w-full py-3 bg-gradient-to-r from-[#00ff88] to-[#00aaff] text-black font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 text-sm"
             >

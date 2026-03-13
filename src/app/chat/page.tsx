@@ -242,11 +242,22 @@ function getAgentResponse(
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const getWelcomeMessage = () => {
+    const profile = typeof window !== 'undefined' ? localStorage.getItem('eelienx_profile') : null;
+    if (profile === 'trader') {
+      return '👽 **¡Qué onda, trader!** Soy eelienX.\n\nVeo que quieres operar en serio 🔥 Tengo precios en vivo y puedo ejecutar órdenes por ti.\n\nAsí trabajo contigo:\n• 📊 Te doy análisis técnico antes de cada operación\n• 💡 Te digo si es buen o mal momento — con razones\n• ⚡ Ejecuto la orden, pero **siempre y cuando tú me confirmes**\n• 🔔 Te aviso cuando el precio toque tu objetivo\n\n¿Qué cripto tienes en la mira?';
+    }
+    if (profile === 'hodler') {
+      return '👽 **¡Qué onda!** Soy eelienX, tu agente crypto.\n\nMe dijiste que prefieres rendimientos a largo plazo 🧊 Buena decisión — el holdeo es una de las estrategias más probadas en crypto.\n\n**¿Por qué funciona el holdeo?**\n• BTC ha subido ~200% en promedio cada 4 años\n• Evitas el estrés de operar a diario\n• Menos comisiones, más tiempo compuesto\n\nSi quieres entrar a alguna posición, solo dime — yo te explico el contexto y ejecuto **siempre y cuando tú me confirmes**.\n\n¿Quieres ver precios o ya tienes algo en mente?';
+    }
+    return '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — yo lo ejecuto, **siempre y cuando tú me confirmes**\n\n¿Por dónde empezamos?';
+  };
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       type: 'agent',
-      content: '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — yo lo ejecuto, pero **siempre y cuando tú me confirmes**\n\n¿Por dónde empezamos?'
+      content: getWelcomeMessage()
     }
   ]);
   const [input, setInput] = useState('');
