@@ -246,7 +246,7 @@ export default function Home() {
     {
       id: 1,
       type: 'agent',
-      content: '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n\n¿Por dónde empezamos?'
+      content: '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — yo lo ejecuto, pero **siempre con tu permiso primero**\n\n¿Por dónde empezamos?'
     }
   ]);
   const [input, setInput] = useState('');
