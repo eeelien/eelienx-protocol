@@ -156,7 +156,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-2xl flex justify-end mb-6">
         <a href="/academia"
           className="flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-400 text-sm hover:border-blue-400 transition-colors">
-          📚 Academia — aprende primero
+          📚 Academia
         </a>
       </div>
 
