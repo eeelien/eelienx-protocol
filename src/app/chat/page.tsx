@@ -791,6 +791,13 @@ export default function Home() {
               {connected.length > 0 ? `🔗 ${connected.length} conectado${connected.length > 1 ? 's' : ''}` : '🔗 Conectar'}
             </button>
 
+            <a
+              href="/academia"
+              className="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 text-xs font-semibold hover:border-blue-500 hover:text-blue-400 transition-colors"
+            >
+              📚 Academia
+            </a>
+
             <button
               onClick={() => setShowSidebar(!showSidebar)}
               className="md:hidden p-2 rounded-lg bg-black/30 border border-[var(--border)]"
