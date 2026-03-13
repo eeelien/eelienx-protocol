@@ -3,114 +3,318 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+// ── Copy strategies data ────────────────────────────────────────────────────
+
+const copyTraders = [
+  {
+    id: 'whale_btc',
+    name: 'The Whale 🐋',
+    focus: 'BTC + ETH',
+    return: '+47%',
+    period: 'este mes',
+    style: 'Compra en correcciones, vende en resistencias. Mueve $500k+/operación.',
+    coin: 'BTC',
+    color: 'orange',
+    avatar: '🐋',
+  },
+  {
+    id: 'defi_queen',
+    name: 'DeFi Queen 👑',
+    focus: 'SOL + Altcoins',
+    return: '+63%',
+    period: 'este mes',
+    style: 'Sigue tokens con volumen creciente. Alta rentabilidad, riesgo medio-alto.',
+    coin: 'SOL',
+    color: 'purple',
+    avatar: '👑',
+  },
+  {
+    id: 'momentum_mx',
+    name: 'Momentum MX 🇲🇽',
+    focus: 'BTC + BNB',
+    return: '+38%',
+    period: 'este mes',
+    style: 'Trader mexicano. Opera en Bitso y Binance. Estrategia conservadora y rentable.',
+    coin: 'BNB',
+    color: 'yellow',
+    avatar: '🇲🇽',
+  },
+];
+
+const copyHodlers = [
+  {
+    id: 'saylor',
+    name: 'Michael Saylor 💎',
+    focus: 'Bitcoin',
+    holding: '500,000+ BTC',
+    quote: '"Bitcoin es la propiedad digital más segura del mundo."',
+    strategy: 'Compra BTC con todo. Nunca vende. Horizonte: décadas.',
+    coin: 'BTC',
+    color: 'orange',
+    avatar: '💎',
+  },
+  {
+    id: 'vitalik',
+    name: 'Estilo Vitalik 🔷',
+    focus: 'Ethereum',
+    holding: 'ETH + ecosistema',
+    quote: '"Ethereum es la base de la economía descentralizada."',
+    strategy: 'Hodlea ETH a largo plazo. Apuesta por DeFi y smart contracts.',
+    coin: 'ETH',
+    color: 'blue',
+    avatar: '🔷',
+  },
+  {
+    id: 'latam_hodler',
+    name: 'LATAM Store 🌎',
+    focus: 'BTC + ETH + SOL',
+    holding: 'Basket diversificado',
+    quote: '"En LATAM el crypto es protección contra la inflación."',
+    strategy: 'Divide el capital en BTC 60% / ETH 30% / SOL 10%. Acumula mensual.',
+    coin: 'BTC',
+    color: 'green',
+    avatar: '🌎',
+  },
+];
+
+// ── Color maps ──────────────────────────────────────────────────────────────
+
+const cardBorder: Record<string, string> = {
+  orange: 'border-orange-500/50 hover:border-orange-400',
+  purple: 'border-purple-500/50 hover:border-purple-400',
+  yellow: 'border-yellow-500/50 hover:border-yellow-400',
+  blue:   'border-blue-500/50 hover:border-blue-400',
+  green:  'border-green-500/50 hover:border-green-400',
+};
+const cardBg: Record<string, string> = {
+  orange: 'bg-orange-500/10',
+  purple: 'bg-purple-500/10',
+  yellow: 'bg-yellow-500/10',
+  blue:   'bg-blue-500/10',
+  green:  'bg-green-500/10',
+};
+const textAccent: Record<string, string> = {
+  orange: 'text-orange-400',
+  purple: 'text-purple-400',
+  yellow: 'text-yellow-400',
+  blue:   'text-blue-400',
+  green:  'text-green-400',
+};
+
+// ── Main component ──────────────────────────────────────────────────────────
+
+type Step = 'profile' | 'method' | 'strategy';
+
 export default function OnboardingPage() {
   const router = useRouter();
-  const [selected, setSelected] = useState<'trader' | 'hodler' | null>(null);
+  const [step, setStep] = useState<Step>('profile');
+  const [profile, setProfile] = useState<'trader' | 'hodler' | null>(null);
+  const [method, setMethod] = useState<'copy' | 'manual' | null>(null);
+  const [strategy, setStrategy] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleContinue = () => {
-    if (!selected) return;
+  const handleProfileSelect = (p: 'trader' | 'hodler') => {
+    setProfile(p);
+    setStep('method');
+  };
+
+  const handleMethodSelect = (m: 'copy' | 'manual') => {
+    setMethod(m);
+    if (m === 'copy') {
+      setStep('strategy');
+    } else {
+      handleFinish(profile!, 'manual', null);
+    }
+  };
+
+  const handleStrategySelect = (id: string) => {
+    setStrategy(id);
+    handleFinish(profile!, 'copy', id);
+  };
+
+  const handleFinish = (p: string, m: string, s: string | null) => {
     setLoading(true);
-    localStorage.setItem('eelienx_profile', selected);
+    localStorage.setItem('eelienx_profile', p);
+    localStorage.setItem('eelienx_method', m);
+    if (s) localStorage.setItem('eelienx_strategy', s);
     router.push('/chat');
   };
 
-  return (
+  // ── Step: Profile ──
+
+  if (step === 'profile') return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-12">
-      {/* Header */}
       <div className="text-center mb-10">
         <div className="text-5xl mb-4">👽</div>
-        <h1 className="text-2xl font-bold mb-2">¿Cuál es tu estilo?</h1>
-        <p className="text-gray-400 text-sm max-w-sm">
-          Cuéntame cómo operas y personalizaré mi forma de ayudarte.
-        </p>
+        <h1 className="text-2xl font-bold mb-2">¿Cómo quieres hacer crecer tu capital?</h1>
+        <p className="text-gray-500 text-sm">Elige tu estilo — puedes cambiar cuando quieras.</p>
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-col sm:flex-row gap-5 w-full max-w-2xl mb-10">
-
-        {/* Trader activo */}
-        <button
-          onClick={() => setSelected('trader')}
-          className={`flex-1 rounded-2xl border-2 p-6 text-left transition-all duration-200 cursor-pointer
-            ${selected === 'trader'
-              ? 'border-green-400 bg-green-400/10 shadow-lg shadow-green-400/20'
-              : 'border-gray-700 bg-gray-900 hover:border-gray-500'}`}
-        >
-          <div className="text-4xl mb-3">🔥</div>
-          <h2 className="text-xl font-bold mb-2">Trader activo</h2>
-          <p className="text-gray-400 text-sm mb-4">
-            Quiero operar, comprar y vender. Busco oportunidades en el mercado y quiero actuar rápido.
-          </p>
-          <ul className="text-sm space-y-2">
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span className="text-gray-300">Análisis técnico antes de cada operación</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span className="text-gray-300">El agente ejecuta, pero tú siempre confirmas</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
-              <span className="text-gray-300">Alertas de precio y señales de mercado</span>
-            </li>
+      <div className="flex flex-col sm:flex-row gap-5 w-full max-w-2xl">
+        {/* Hodler */}
+        <button onClick={() => handleProfileSelect('hodler')}
+          className="flex-1 rounded-2xl border-2 border-blue-500/40 bg-blue-500/5 hover:border-blue-400 hover:bg-blue-500/10 p-7 text-left transition-all cursor-pointer group">
+          <div className="text-5xl mb-4">🧊</div>
+          <h2 className="text-xl font-bold mb-2">Holdear</h2>
+          <p className="text-gray-400 text-sm mb-5">Yo guardo — el tiempo trabaja por mí</p>
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li className="flex gap-2"><span className="text-blue-400">✓</span> Rendimientos a largo plazo</li>
+            <li className="flex gap-2"><span className="text-blue-400">✓</span> Sin estrés de operar a diario</li>
+            <li className="flex gap-2"><span className="text-blue-400">✓</span> Basado en estrategias de millonarios</li>
+            <li className="flex gap-2"><span className="text-blue-400">✓</span> BTC ha subido ~200% cada 4 años</li>
           </ul>
-          {selected === 'trader' && (
-            <div className="mt-4 text-green-400 text-sm font-semibold">✓ Seleccionado</div>
-          )}
+          <div className="mt-6 text-blue-400 font-semibold text-sm group-hover:underline">Elegir Holdear →</div>
         </button>
 
-        {/* Hodler pasivo */}
-        <button
-          onClick={() => setSelected('hodler')}
-          className={`flex-1 rounded-2xl border-2 p-6 text-left transition-all duration-200 cursor-pointer
-            ${selected === 'hodler'
-              ? 'border-blue-400 bg-blue-400/10 shadow-lg shadow-blue-400/20'
-              : 'border-gray-700 bg-gray-900 hover:border-gray-500'}`}
-        >
-          <div className="text-4xl mb-3">🧊</div>
-          <h2 className="text-xl font-bold mb-2">Hodler pasivo</h2>
-          <p className="text-gray-400 text-sm mb-4">
-            Prefiero rendimientos a largo plazo. Meto mi capital, lo dejo crecer y no me complico la vida.
-          </p>
-          <ul className="text-sm space-y-2">
-            <li className="flex items-start gap-2">
-              <span className="text-blue-400 mt-0.5">✓</span>
-              <span className="text-gray-300">Estrategia de holdeo explicada en simple</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-400 mt-0.5">✓</span>
-              <span className="text-gray-300">Por qué el holdeo funciona a largo plazo</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-400 mt-0.5">✓</span>
-              <span className="text-gray-300">El agente ejecuta cuando tú lo decides</span>
-            </li>
+        {/* Trader */}
+        <button onClick={() => handleProfileSelect('trader')}
+          className="flex-1 rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 hover:border-orange-400 hover:bg-orange-500/10 p-7 text-left transition-all cursor-pointer group">
+          <div className="text-5xl mb-4">🔥</div>
+          <h2 className="text-xl font-bold mb-2">Tradear</h2>
+          <p className="text-gray-400 text-sm mb-5">Yo opero — el agente me ayuda a ejecutar</p>
+          <ul className="space-y-2 text-sm text-gray-300">
+            <li className="flex gap-2"><span className="text-orange-400">✓</span> Operaciones activas en el mercado</li>
+            <li className="flex gap-2"><span className="text-orange-400">✓</span> Análisis técnico antes de entrar</li>
+            <li className="flex gap-2"><span className="text-orange-400">✓</span> Copia a traders exitosos del momento</li>
+            <li className="flex gap-2"><span className="text-orange-400">✓</span> Tú confirmas antes de cada orden</li>
           </ul>
-          {selected === 'hodler' && (
-            <div className="mt-4 text-blue-400 text-sm font-semibold">✓ Seleccionado</div>
-          )}
+          <div className="mt-6 text-orange-400 font-semibold text-sm group-hover:underline">Elegir Tradear →</div>
         </button>
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={handleContinue}
-        disabled={!selected || loading}
-        className={`w-full max-w-xs py-4 rounded-xl font-bold text-lg transition-all duration-200
-          ${selected
-            ? selected === 'trader'
-              ? 'bg-green-400 text-black hover:bg-green-300 cursor-pointer'
-              : 'bg-blue-400 text-black hover:bg-blue-300 cursor-pointer'
-            : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
-      >
-        {loading ? 'Entrando...' : selected ? 'Entrar al agente 🛸' : 'Elige tu perfil'}
-      </button>
-
-      <p className="text-gray-600 text-xs mt-6 text-center">
-        Puedes cambiar tu perfil en cualquier momento desde el chat.
+      <p className="text-gray-700 text-xs mt-8 text-center">
+        📚 ¿Quieres aprender primero? <a href="/academia" className="text-blue-500 hover:underline">Ir a la Academia</a>
       </p>
     </main>
   );
+
+  // ── Step: Method ──
+
+  if (step === 'method') {
+    const isHodler = profile === 'hodler';
+    const color = isHodler ? 'blue' : 'orange';
+    const emoji = isHodler ? '🧊' : '🔥';
+
+    return (
+      <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-12">
+        <button onClick={() => setStep('profile')} className="mb-6 text-gray-600 hover:text-white text-sm self-start max-w-xl w-full mx-auto">← Volver</button>
+
+        <div className="text-center mb-10 max-w-xl w-full mx-auto">
+          <div className="text-4xl mb-3">{emoji}</div>
+          <h1 className="text-2xl font-bold mb-2">
+            {isHodler ? '¿Cómo quieres holdear?' : '¿Cómo quieres tradear?'}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            {isHodler
+              ? 'Elige la estrategia — el agente la ejecuta con tu permiso.'
+              : 'Elige el método — el agente analiza y ejecuta con tu confirmación.'}
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
+          {/* Copy */}
+          <button onClick={() => handleMethodSelect('copy')}
+            className={`flex-1 rounded-2xl border-2 ${cardBorder[color]} ${cardBg[color]} p-6 text-left transition-all cursor-pointer`}>
+            <div className="text-3xl mb-3">{isHodler ? '🏆 Copy Hodl' : '🏆 Copy Trading'}</div>
+            <p className="text-gray-300 text-sm mb-3">
+              {isHodler
+                ? 'Elige a un holdear famoso y replica su estrategia automáticamente.'
+                : 'Copia a los traders más exitosos del momento. El agente replica sus movimientos.'}
+            </p>
+            <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${textAccent[color]} border-current bg-current/10`}>
+              Recomendado para empezar
+            </span>
+          </button>
+
+          {/* Manual */}
+          <button onClick={() => handleMethodSelect('manual')}
+            className="flex-1 rounded-2xl border-2 border-gray-700 bg-gray-900 hover:border-gray-500 p-6 text-left transition-all cursor-pointer">
+            <div className="text-3xl mb-3">{isHodler ? '✋ Hodl Manual' : '✋ Trade Manual'}</div>
+            <p className="text-gray-400 text-sm mb-3">
+              {isHodler
+                ? 'Tú decides qué crypto acumular y cuándo. El agente ejecuta y te da contexto.'
+                : 'Tú decides cuándo entrar y salir. El agente analiza y ejecuta con tu OK.'}
+            </p>
+            <span className="text-xs text-gray-500">Para los que ya tienen experiencia</span>
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Step: Strategy (Copy) ──
+
+  if (step === 'strategy') {
+    const isHodler = profile === 'hodler';
+    const items = isHodler ? copyHodlers : copyTraders;
+
+    return (
+      <main className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-12">
+        <div className="w-full max-w-xl">
+          <button onClick={() => setStep('method')} className="mb-6 text-gray-600 hover:text-white text-sm">← Volver</button>
+
+          <div className="text-center mb-8">
+            <div className="text-4xl mb-3">{isHodler ? '🏆' : '📊'}</div>
+            <h1 className="text-2xl font-bold mb-2">
+              {isHodler ? 'Elige a quién copiar' : 'Traders exitosos del momento'}
+            </h1>
+            <p className="text-gray-500 text-sm">
+              {isHodler
+                ? 'El agente replica su estrategia de holdeo — tú siempre confirmas.'
+                : 'El agente copia sus movimientos y te pide confirmación antes de ejecutar.'}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {items.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => !loading && handleStrategySelect(item.id)}
+                disabled={loading}
+                className={`w-full text-left rounded-2xl border-2 ${cardBorder[item.color]} bg-gray-900 p-5 transition-all cursor-pointer disabled:opacity-50`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{item.avatar}</span>
+                    <div>
+                      <div className="font-bold text-white">{item.name}</div>
+                      <div className="text-xs text-gray-500">{item.focus}</div>
+                    </div>
+                  </div>
+                  {'return' in item ? (
+                    <div className="text-right">
+                      <div className={`font-bold text-lg ${textAccent[item.color]}`}>{item.return}</div>
+                      <div className="text-xs text-gray-600">{item.period}</div>
+                    </div>
+                  ) : (
+                    <div className={`text-xs font-semibold ${textAccent[item.color]}`}>
+                      {(item as typeof copyHodlers[0]).holding}
+                    </div>
+                  )}
+                </div>
+
+                {'quote' in item && (
+                  <p className="text-gray-500 text-xs italic mb-2">{item.quote}</p>
+                )}
+
+                <p className="text-gray-400 text-sm">
+                  {'style' in item ? item.style : (item as typeof copyHodlers[0]).strategy}
+                </p>
+
+                <div className={`mt-3 text-xs font-semibold ${textAccent[item.color]}`}>
+                  {loading && strategy === item.id ? 'Configurando...' : `Copiar estrategia →`}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <p className="text-center text-gray-700 text-xs mt-6">
+            El agente nunca ejecuta sin que tú confirmes cada operación.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  return null;
 }

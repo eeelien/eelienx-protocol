@@ -145,9 +145,46 @@ function getAgentResponse(
   const isTrader = profile === 'trader';
   const isHodler = profile === 'hodler';
 
+  const method    = typeof window !== 'undefined' ? localStorage.getItem('eelienx_method')    : null;
+  const stratId   = typeof window !== 'undefined' ? localStorage.getItem('eelienx_strategy')  : null;
+
+  const copySignals: Record<string, { action: string; coin: string; context: string }> = {
+    whale_btc:    { action: 'Comprar BTC',  coin: 'BTC', context: 'The Whale entró en BTC en soporte de $84,200 — RSI en 38, rebote técnico esperado.' },
+    defi_queen:   { action: 'Comprar SOL',  coin: 'SOL', context: 'DeFi Queen detectó volumen inusual en SOL — 3x el promedio de 7 días.' },
+    momentum_mx:  { action: 'Comprar BNB',  coin: 'BNB', context: 'Momentum MX entró en BNB con tendencia alcista confirmada en 4h.' },
+    saylor:       { action: 'Acumular BTC', coin: 'BTC', context: 'Strategy sigue comprando BTC en cada corrección. Estrategia: DCA mensual.' },
+    vitalik:      { action: 'Acumular ETH', coin: 'ETH', context: 'Estilo Vitalik: acumular ETH en correcciones > 10%, horizonte 3+ años.' },
+    latam_hodler: { action: 'Acumular BTC/ETH/SOL', coin: 'BTC', context: 'LATAM Store: repartir 60% BTC / 30% ETH / 10% SOL. Compra en correcciones.' },
+  };
+
+  if (lowerInput.includes('copiar ahora') || lowerInput.includes('siguiente señal') || (lowerInput.includes('empezar') && lowerInput.includes('holdear'))) {
+    if (stratId && copySignals[stratId]) {
+      const sig = copySignals[stratId];
+      const coinData = prices[sig.coin as keyof typeof prices];
+      const price = coinData?.price?.toLocaleString() || '—';
+      const change = coinData?.change?.toFixed(2) || '0';
+      const changeEmoji = coinData?.change > 0 ? '📈' : '📉';
+      return {
+        response: `${changeEmoji} **Señal activa — ${sig.action}**\n\n${sig.context}\n\n**${sig.coin}** ahora: $${price} USD (${change}%)\n\n¿Quieres que ejecute esta operación?`,
+        needsPermission: true,
+        permissionData: {
+          action: sig.action,
+          details: `${sig.action} a precio de mercado (~$${price} USD) en tu exchange conectado. Basado en estrategia de ${stratId}.`,
+        }
+      };
+    }
+    return { response: '👽 No tienes una estrategia de copia activa. Escribe "cambiar estrategia" para elegir una.' };
+  }
+
+  if (lowerInput.includes('cambiar estrategia') || lowerInput.includes('cambiar perfil')) {
+    return { response: '⚙️ Para cambiar tu estrategia o perfil, ve a:\n\n👉 [Configurar perfil](/onboarding)\n\nO escríbeme qué quieres cambiar.' };
+  }
+
   if (lowerInput.includes('hola') || lowerInput.includes('hey') || lowerInput.includes('qué onda')) {
+    if (isTrader && method === 'copy') return { response: '🔥 ¡Listo! Escribe "copiar ahora" para ver la señal activa de tu trader, o dime qué cripto quieres operar.' };
     if (isTrader) return { response: '🔥 ¡Todo listo! Dime qué cripto tienes en la mira y te doy el análisis técnico antes de entrar.' };
-    if (isHodler) return { response: '🧊 ¡Hola! ¿Cómo va tu posición? Si quieres que revise si es buen momento para acumular más, solo dime.' };
+    if (isHodler && method === 'copy') return { response: '🧊 ¡Hola! Escribe "empezar a holdear" para ver la recomendación activa de tu estrategia.' };
+    if (isHodler) return { response: '🧊 ¡Hola! ¿Cómo va tu posición? Si quieres acumular más, dime qué cripto.' };
     return { response: '¡Qué onda! 👽 Soy eelienX. ¿Qué necesitas?' };
   }
 
@@ -295,14 +332,33 @@ function getAgentResponse(
 
 export default function Home() {
   const getWelcomeMessage = () => {
-    const profile = typeof window !== 'undefined' ? localStorage.getItem('eelienx_profile') : null;
-    if (profile === 'trader') {
-      return '👽 **¡Qué onda, trader!** Soy eelienX.\n\nVeo que quieres operar en serio 🔥 Tengo precios en vivo y puedo ejecutar órdenes por ti.\n\nAsí trabajo contigo:\n• 📊 Te doy análisis técnico antes de cada operación\n• 💡 Te digo si es buen o mal momento — con razones\n• ⚡ Ejecuto la orden, pero **siempre y cuando tú me confirmes**\n• 🔔 Te aviso cuando el precio toque tu objetivo\n\n¿Qué cripto tienes en la mira?';
+    if (typeof window === 'undefined') return '👽 **¡Qué onda! Soy eelienX.** Tu agente crypto personal. ¿Por dónde empezamos?';
+    const profile   = localStorage.getItem('eelienx_profile');
+    const method    = localStorage.getItem('eelienx_method');
+    const strategyId = localStorage.getItem('eelienx_strategy');
+
+    const strategyNames: Record<string,string> = {
+      whale_btc:    'The Whale 🐋 (BTC+ETH, +47% este mes)',
+      defi_queen:   'DeFi Queen 👑 (SOL+Altcoins, +63% este mes)',
+      momentum_mx:  'Momentum MX 🇲🇽 (BTC+BNB, +38% este mes)',
+      saylor:       'Michael Saylor 💎 — Bitcoin puro',
+      vitalik:      'Estilo Vitalik 🔷 — Ethereum largo plazo',
+      latam_hodler: 'LATAM Store 🌎 — BTC 60% / ETH 30% / SOL 10%',
+    };
+
+    if (profile === 'trader' && method === 'copy' && strategyId) {
+      return `🔥 **¡Listo para operar!** Estás copiando a **${strategyNames[strategyId] || strategyId}**.\n\nAsí funciona:\n• Monitoreo sus señales en tiempo real\n• Te aviso cuando haga un movimiento\n• Te muestro el análisis técnico\n• **Tú confirmas antes de que ejecute**\n\nEscribe "copiar ahora" para ver la siguiente señal activa, o dime qué cripto quieres operar.`;
     }
-    if (profile === 'hodler') {
-      return '👽 **¡Qué onda!** Soy eelienX, tu agente crypto.\n\nMe dijiste que prefieres rendimientos a largo plazo 🧊 Buena decisión — el holdeo es una de las estrategias más probadas en crypto.\n\n**¿Por qué funciona el holdeo?**\n• BTC ha subido ~200% en promedio cada 4 años\n• Evitas el estrés de operar a diario\n• Menos comisiones, más tiempo compuesto\n\nSi quieres entrar a alguna posición, solo dime — yo te explico el contexto y ejecuto **siempre y cuando tú me confirmes**.\n\n¿Quieres ver precios o ya tienes algo en mente?';
+    if (profile === 'trader' && method === 'manual') {
+      return '🔥 **¡Qué onda, trader!** Soy eelienX.\n\nModo manual activado. Tú decides cuándo entrar y salir — yo analizo y ejecuto.\n\nAsí trabajo:\n• 📊 Análisis técnico (RSI, soporte, resistencia) antes de cada operación\n• ⚡ Ejecuto la orden cuando me lo pidas\n• **Siempre y cuando tú me confirmes**\n\n¿Qué cripto tienes en la mira?';
     }
-    return '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — yo lo ejecuto, **siempre y cuando tú me confirmes**\n\n¿Por dónde empezamos?';
+    if (profile === 'hodler' && method === 'copy' && strategyId) {
+      return `🧊 **¡Perfecto!** Estás replicando la estrategia de **${strategyNames[strategyId] || strategyId}**.\n\nPlan activo:\n• Acumular según la estrategia elegida\n• Te explico el contexto antes de cada compra\n• Horizonte largo plazo — no vendemos por pánico\n• **Tú confirmas antes de cualquier movimiento**\n\nEscribe "empezar a holdear" para ver la primera recomendación, o "precios" para ver el mercado.`;
+    }
+    if (profile === 'hodler' && method === 'manual') {
+      return '🧊 **¡Hola, hodler!** Soy eelienX.\n\nModo manual activado. Tú decides qué acumular — yo te doy el contexto histórico y ejecuto.\n\n• BTC ha subido ~200% por ciclo de 4 años\n• Estrategia comprobada: comprar y no vender\n• **Siempre con tu confirmación antes de entrar**\n\n¿Qué quieres acumular? ¿O prefieres ver precios primero?';
+    }
+    return '👽 **¡Qué onda! Soy eelienX.**\n\nTu agente crypto personal. Tengo precios en vivo de BTC, ETH, SOL, BNB, DOGE y más.\n\nPuedo ayudarte con:\n• 📊 Precios y análisis de mercado\n• 💰 Ver tu portafolio y rendimiento\n• 🔔 Alertas de precio\n• 🏦 Conectar Bitso, Binance o Bybit\n• 🤝 Si quieres hacer un movimiento, solo pídeme — **siempre y cuando tú me confirmes**\n\n¿Por dónde empezamos?';
   };
 
   const [messages, setMessages] = useState<Message[]>([
