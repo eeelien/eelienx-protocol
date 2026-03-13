@@ -103,7 +103,7 @@ const textAccent: Record<string, string> = {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-type Step = 'profile' | 'method' | 'strategy';
+type Step = 'profile' | 'method' | 'strategy' | 'risk';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -111,7 +111,17 @@ export default function OnboardingPage() {
   const [profile, setProfile] = useState<'trader' | 'hodler' | null>(null);
   const [method, setMethod] = useState<'copy' | 'manual' | null>(null);
   const [strategy, setStrategy] = useState<string | null>(null);
+  const [stopLoss, setStopLoss] = useState('');
+  const [takeProfit, setTakeProfit] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Suggested defaults by profile
+  const suggested = {
+    stopLoss:   profile === 'hodler' ? '-15%' : '-5%',
+    takeProfit: profile === 'hodler' ? '+50%' : '+10%',
+    stopLossLabel:   profile === 'hodler' ? 'Salir si baja 15% desde tu entrada' : 'Salir si baja 5% desde tu entrada',
+    takeProfitLabel: profile === 'hodler' ? 'Tomar ganancias cuando suba 50%' : 'Tomar ganancias cuando suba 10%',
+  };
 
   const handleProfileSelect = (p: 'trader' | 'hodler') => {
     setProfile(p);
@@ -120,30 +130,36 @@ export default function OnboardingPage() {
 
   const handleMethodSelect = (m: 'copy' | 'manual') => {
     setMethod(m);
-    if (m === 'copy') {
-      setStep('strategy');
-    } else {
-      handleFinish(profile!, 'manual', null);
-    }
+    if (m === 'copy') setStep('strategy');
+    else setStep('risk');
   };
 
   const handleStrategySelect = (id: string) => {
     setStrategy(id);
-    handleFinish(profile!, 'copy', id);
+    setStep('risk');
   };
 
-  const handleFinish = (p: string, m: string, s: string | null) => {
+  const handleFinish = () => {
     setLoading(true);
-    localStorage.setItem('eelienx_profile', p);
-    localStorage.setItem('eelienx_method', m);
-    if (s) localStorage.setItem('eelienx_strategy', s);
+    localStorage.setItem('eelienx_profile', profile!);
+    localStorage.setItem('eelienx_method', method!);
+    if (strategy) localStorage.setItem('eelienx_strategy', strategy);
+    localStorage.setItem('eelienx_stop_loss', stopLoss || suggested.stopLoss);
+    localStorage.setItem('eelienx_take_profit', takeProfit || suggested.takeProfit);
     router.push('/chat');
   };
 
   // ── Step: Profile ──
-
   if (step === 'profile') return (
-    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-12">
+    <main className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-10">
+      {/* Academia button top */}
+      <div className="w-full max-w-2xl flex justify-end mb-6">
+        <a href="/academia"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-400 text-sm hover:border-blue-400 transition-colors">
+          📚 Academia — aprende primero
+        </a>
+      </div>
+
       <div className="text-center mb-10">
         <div className="text-5xl mb-4">👽</div>
         <h1 className="text-2xl font-bold mb-2">¿Cómo quieres hacer crecer tu capital?</h1>
@@ -155,36 +171,38 @@ export default function OnboardingPage() {
         <button onClick={() => handleProfileSelect('hodler')}
           className="flex-1 rounded-2xl border-2 border-blue-500/40 bg-blue-500/5 hover:border-blue-400 hover:bg-blue-500/10 p-7 text-left transition-all cursor-pointer group">
           <div className="text-5xl mb-4">🧊</div>
-          <h2 className="text-xl font-bold mb-2">Holdear</h2>
-          <p className="text-gray-400 text-sm mb-5">Yo guardo — el tiempo trabaja por mí</p>
+          <h2 className="text-xl font-bold mb-1">Holdear</h2>
+          <p className="text-blue-300 text-sm font-medium mb-4">El tiempo trabaja por mi dinero</p>
           <ul className="space-y-2 text-sm text-gray-300">
             <li className="flex gap-2"><span className="text-blue-400">✓</span> Rendimientos a largo plazo</li>
             <li className="flex gap-2"><span className="text-blue-400">✓</span> Sin estrés de operar a diario</li>
             <li className="flex gap-2"><span className="text-blue-400">✓</span> Basado en estrategias de millonarios</li>
             <li className="flex gap-2"><span className="text-blue-400">✓</span> BTC ha subido ~200% cada 4 años</li>
           </ul>
-          <div className="mt-6 text-blue-400 font-semibold text-sm group-hover:underline">Elegir Holdear →</div>
+          <div className="mt-5 text-xs text-gray-600 border-t border-gray-800 pt-4">
+            ⚠️ Riesgo: el mercado puede bajar antes de subir. El agente te protege con stop loss.
+          </div>
+          <div className="mt-3 text-blue-400 font-semibold text-sm group-hover:underline">Elegir Holdear →</div>
         </button>
 
         {/* Trader */}
         <button onClick={() => handleProfileSelect('trader')}
           className="flex-1 rounded-2xl border-2 border-orange-500/40 bg-orange-500/5 hover:border-orange-400 hover:bg-orange-500/10 p-7 text-left transition-all cursor-pointer group">
           <div className="text-5xl mb-4">🔥</div>
-          <h2 className="text-xl font-bold mb-2">Tradear</h2>
-          <p className="text-gray-400 text-sm mb-5">Yo opero — el agente me ayuda a ejecutar</p>
+          <h2 className="text-xl font-bold mb-1">Tradear</h2>
+          <p className="text-orange-300 text-sm font-medium mb-4">Operaciones rápidas y activas</p>
           <ul className="space-y-2 text-sm text-gray-300">
-            <li className="flex gap-2"><span className="text-orange-400">✓</span> Operaciones activas en el mercado</li>
-            <li className="flex gap-2"><span className="text-orange-400">✓</span> Análisis técnico antes de entrar</li>
+            <li className="flex gap-2"><span className="text-orange-400">✓</span> Entra y sal del mercado cuando quieras</li>
+            <li className="flex gap-2"><span className="text-orange-400">✓</span> Análisis técnico antes de cada operación</li>
             <li className="flex gap-2"><span className="text-orange-400">✓</span> Copia a traders exitosos del momento</li>
             <li className="flex gap-2"><span className="text-orange-400">✓</span> Tú confirmas antes de cada orden</li>
           </ul>
-          <div className="mt-6 text-orange-400 font-semibold text-sm group-hover:underline">Elegir Tradear →</div>
+          <div className="mt-5 text-xs text-gray-600 border-t border-gray-800 pt-4">
+            ⚠️ Riesgo: mayor rentabilidad posible, mayor exposición. Stop loss obligatorio.
+          </div>
+          <div className="mt-3 text-orange-400 font-semibold text-sm group-hover:underline">Elegir Tradear →</div>
         </button>
       </div>
-
-      <p className="text-gray-700 text-xs mt-8 text-center">
-        📚 ¿Quieres aprender primero? <a href="/academia" className="text-blue-500 hover:underline">Ir a la Academia</a>
-      </p>
     </main>
   );
 
@@ -310,6 +328,118 @@ export default function OnboardingPage() {
 
           <p className="text-center text-gray-700 text-xs mt-6">
             El agente nunca ejecuta sin que tú confirmes cada operación.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Step: Risk config ──
+  if (step === 'risk') {
+    const isHodler = profile === 'hodler';
+    const color = isHodler ? 'blue' : 'orange';
+
+    return (
+      <main className="min-h-screen bg-black text-white flex flex-col items-center px-4 py-12">
+        <div className="w-full max-w-lg">
+          <button onClick={() => setStep(method === 'copy' ? 'strategy' : 'method')}
+            className="mb-6 text-gray-600 hover:text-white text-sm">← Volver</button>
+
+          <div className="text-center mb-8">
+            <div className="text-4xl mb-3">🛡️</div>
+            <h1 className="text-2xl font-bold mb-2">Protege tu capital</h1>
+            <p className="text-gray-500 text-sm">
+              Define cuándo parar pérdidas y cuándo tomar ganancias.<br/>
+              Si no sabes, el agente te sugiere los valores ideales.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Stop Loss */}
+            <div className="bg-gray-900 border border-red-500/20 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-red-400 text-lg">🛑</span>
+                <span className="font-bold">Stop Loss</span>
+                <span className="text-xs text-gray-500 ml-1">— para si baja mucho</span>
+              </div>
+              <p className="text-gray-500 text-xs mb-4">
+                Si el precio cae este porcentaje desde tu entrada, el agente sale automáticamente para no perder más.
+              </p>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="text"
+                  placeholder={suggested.stopLoss}
+                  value={stopLoss}
+                  onChange={e => setStopLoss(e.target.value)}
+                  className="flex-1 bg-black border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:border-red-500 outline-none"
+                />
+                <button
+                  onClick={() => setStopLoss(suggested.stopLoss)}
+                  className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm hover:bg-red-500/20 transition-all whitespace-nowrap">
+                  👽 Sugerido
+                </button>
+              </div>
+              {(stopLoss || suggested.stopLoss) && (
+                <p className="text-xs text-gray-600 mt-2">
+                  ✓ {stopLoss ? `Salir si baja ${stopLoss}` : suggested.stopLossLabel}
+                </p>
+              )}
+            </div>
+
+            {/* Take Profit */}
+            <div className="bg-gray-900 border border-green-500/20 rounded-2xl p-5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-green-400 text-lg">🎯</span>
+                <span className="font-bold">Take Profit</span>
+                <span className="text-xs text-gray-500 ml-1">— para tomar ganancias</span>
+              </div>
+              <p className="text-gray-500 text-xs mb-4">
+                Cuando el precio suba este porcentaje desde tu entrada, el agente te avisa para que tomes ganancias.
+              </p>
+              <div className="flex gap-3 items-center">
+                <input
+                  type="text"
+                  placeholder={suggested.takeProfit}
+                  value={takeProfit}
+                  onChange={e => setTakeProfit(e.target.value)}
+                  className="flex-1 bg-black border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:border-green-500 outline-none"
+                />
+                <button
+                  onClick={() => setTakeProfit(suggested.takeProfit)}
+                  className="px-4 py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-400 text-sm hover:bg-green-500/20 transition-all whitespace-nowrap">
+                  👽 Sugerido
+                </button>
+              </div>
+              {(takeProfit || suggested.takeProfit) && (
+                <p className="text-xs text-gray-600 mt-2">
+                  ✓ {takeProfit ? `Tomar ganancias cuando suba ${takeProfit}` : suggested.takeProfitLabel}
+                </p>
+              )}
+            </div>
+
+            {/* Suggestion box */}
+            <div className={`bg-${color}-500/5 border border-${color}-500/20 rounded-xl p-4 text-sm text-gray-400`}>
+              <p className="font-semibold text-white mb-1">👽 Recomendación del agente</p>
+              {isHodler
+                ? <p>Para un hodler a largo plazo: <span className="text-red-400">Stop Loss -15%</span> para aguantar correcciones normales, y <span className="text-green-400">Take Profit +50%</span> para tomar ganancias en subidas fuertes. Puedes ajustarlo cuando quieras.</p>
+                : <p>Para un trader activo: <span className="text-red-400">Stop Loss -5%</span> para limitar pérdidas en cada operación, y <span className="text-green-400">Take Profit +10%</span> para asegurar ganancias consistentes. La disciplina aquí es clave.</p>
+              }
+            </div>
+          </div>
+
+          <button
+            onClick={handleFinish}
+            disabled={loading}
+            className={`w-full mt-8 py-4 rounded-xl font-bold text-lg transition-all
+              ${!loading
+                ? isHodler ? 'bg-blue-500 hover:bg-blue-400 text-white cursor-pointer' : 'bg-orange-500 hover:bg-orange-400 text-white cursor-pointer'
+                : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}
+          >
+            {loading ? 'Configurando...' : 'Entrar al agente 🛸'}
+          </button>
+
+          <p className="text-center text-gray-700 text-xs mt-4">
+            Puedes cambiar stop loss y take profit en cualquier momento desde el chat.
           </p>
         </div>
       </main>
