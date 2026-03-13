@@ -141,19 +141,38 @@ function getAgentResponse(
   connected: ConnectedAccount[]
 ): { response: string; needsPermission?: boolean; permissionData?: any } {
   const lowerInput = input.toLowerCase();
+  const profile = typeof window !== 'undefined' ? localStorage.getItem('eelienx_profile') : null;
+  const isTrader = profile === 'trader';
+  const isHodler = profile === 'hodler';
 
   if (lowerInput.includes('hola') || lowerInput.includes('hey') || lowerInput.includes('qué onda')) {
-    return { response: '¡Qué onda! 👽 Soy eelienX, tu agente crypto. Puedo ayudarte a:\n\n• Ver precios en tiempo real\n• Analizar si es buen momento de operar\n• Ejecutar operaciones en tu nombre\n• Monitorear tu cartera fría\n\n¿Qué necesitas?' };
+    if (isTrader) return { response: '🔥 ¡Todo listo! Dime qué cripto tienes en la mira y te doy el análisis técnico antes de entrar.' };
+    if (isHodler) return { response: '🧊 ¡Hola! ¿Cómo va tu posición? Si quieres que revise si es buen momento para acumular más, solo dime.' };
+    return { response: '¡Qué onda! 👽 Soy eelienX. ¿Qué necesitas?' };
   }
 
   if (lowerInput.includes('precio') || lowerInput.includes('cuánto está') || lowerInput.includes('cotización') || lowerInput.includes('cuanto vale')) {
-    // Check if asking about specific coin
     const coins = ['BTC','ETH','SOL','BNB','DOGE','AVAX','ADA','MATIC','XRP','USDT'];
-    const mentioned = coins.find(c => lowerInput.includes(c.toLowerCase()) || lowerInput.includes({ BTC:'bitcoin',ETH:'ethereum',SOL:'solana',BNB:'binance',DOGE:'dogecoin',AVAX:'avalanche',ADA:'cardano',MATIC:'polygon',XRP:'ripple',USDT:'tether' }[c]?.toLowerCase() || ''));
+    const nameMap: Record<string,string> = { BTC:'bitcoin',ETH:'ethereum',SOL:'solana',BNB:'binance',DOGE:'dogecoin',AVAX:'avalanche',ADA:'cardano',MATIC:'polygon',XRP:'ripple',USDT:'tether' };
+    const mentioned = coins.find(c => lowerInput.includes(c.toLowerCase()) || lowerInput.includes(nameMap[c]?.toLowerCase() || ''));
     if (mentioned && prices[mentioned]?.price > 0) {
       const d = prices[mentioned];
       const emoji = d.change > 0 ? '📈' : d.change < 0 ? '📉' : '➡️';
-      return { response: `${emoji} **${d.name} (${mentioned})**\n\n💵 Precio: $${d.price.toLocaleString()} USD\n📊 Cambio 24h: ${d.change > 0 ? '+' : ''}${d.change.toFixed(2)}%\n🔺 Máximo 24h: $${d.high24h?.toLocaleString()}\n🔻 Mínimo 24h: $${d.low24h?.toLocaleString()}\n\n💡 Escribe "análisis" para saber si es buen momento de comprar.` };
+      const range = d.high24h > d.low24h ? ((d.price - d.low24h) / (d.high24h - d.low24h) * 100).toFixed(0) : '50';
+      let extra = '';
+      if (isTrader) {
+        const trend = d.change > 2 ? 'alcista' : d.change < -2 ? 'bajista' : 'lateral';
+        const rsiEst = d.change > 3 ? '65–75 (zona de sobrecompra, cuidado)' : d.change < -3 ? '28–35 (zona de sobreventa, posible rebote)' : '45–55 (neutral)';
+        const support = (d.low24h * 0.995).toLocaleString(undefined, {maximumFractionDigits: 0});
+        const resist  = (d.high24h * 1.005).toLocaleString(undefined, {maximumFractionDigits: 0});
+        extra = `\n\n🧠 **Contexto técnico:**\nTendencia: ${trend} | RSI estimado: ${rsiEst}\nSoporte: ~$${support} | Resistencia: ~$${resist}\nPosición en rango del día: ${range}%\n\n¿Quieres que ejecute una orden de compra o venta?`;
+      } else if (isHodler) {
+        const histReturn = mentioned === 'BTC' ? '~+200% en los últimos 4 años' : mentioned === 'ETH' ? '~+180% en los últimos 3 años' : 'históricamente positivo a +1 año';
+        extra = `\n\n🧊 **Para hodlers:** ${d.name} tiene un rendimiento histórico de ${histReturn}. ${d.change < -3 ? 'Está en corrección — podría ser un buen momento para acumular.' : 'El mercado está estable — mantener es la estrategia.'}\n\n¿Quieres que acumule una posición? Siempre y cuando tú me confirmes.`;
+      } else {
+        extra = `\n\n💡 Escribe "análisis" para saber si es buen momento.`;
+      }
+      return { response: `${emoji} **${d.name} (${mentioned})**\n\n💵 Precio: $${d.price.toLocaleString()} USD\n📊 Cambio 24h: ${d.change > 0 ? '+' : ''}${d.change.toFixed(2)}%\n🔺 Máximo 24h: $${d.high24h?.toLocaleString()}\n🔻 Mínimo 24h: $${d.low24h?.toLocaleString()}${extra}` };
     }
     const priceList = Object.entries(prices)
       .filter(([, d]) => d.price > 0)
@@ -163,20 +182,32 @@ function getAgentResponse(
         return `${emoji} ${symbol}: ${price} (${data.change > 0 ? '+' : ''}${data.change.toFixed(2)}%)`;
       })
       .join('\n');
-    return { response: `📊 **Precios en tiempo real:**\n\n${priceList}\n\n💡 Escribe "análisis" para recomendaciones o "avísame si BTC baja de $80,000" para crear una alerta.` };
+    const priceFooter = isHodler
+      ? '\n\n🧊 ¿Quieres que acumule alguna posición a largo plazo? Solo dime cuál.'
+      : '\n\n💡 Escribe "análisis BTC" o "comprar BTC" para actuar.';
+    return { response: `📊 **Precios en tiempo real:**\n\n${priceList}${priceFooter}` };
+  }
+
+  if (lowerInput.includes('holdear') || lowerInput.includes('holdeo') || lowerInput.includes('hodl') || lowerInput.includes('largo plazo')) {
+    const btc = prices.BTC;
+    const price = btc?.price?.toLocaleString() || '—';
+    return {
+      response: `🧊 **¿Quieres rendimientos pasivos a largo plazo? El holdeo es lo tuyo.**\n\n**Por qué funciona:**\n• BTC ha subido un promedio de ~200% cada ciclo de 4 años\n• Menos estrés que operar a diario — "meter y olvidar"\n• Evitas pagar comisiones por cada operación\n• El tiempo compuesto trabaja a tu favor\n\n📌 BTC hoy: $${price} USD — ${btc?.change && btc.change < -2 ? 'en corrección, posible buen punto de entrada' : 'mercado estable'}\n\n¿Quieres que mueva una posición a holdeo largo plazo? Solo dime el monto y **siempre y cuando tú me confirmes**, lo ejecuto.`,
+    };
   }
 
   if (lowerInput.includes('portafolio') || lowerInput.includes('balance') || lowerInput.includes('tengo') || lowerInput.includes('saldo')) {
     if (wallet.length === 0) {
-      return { response: '🔌 Aún no tienes ningún exchange conectado.\n\nEscribe "conectar" para agregar Bitso, Binance, Bybit o tu cartera fría.' };
+      const noWalletMsg = isHodler
+        ? '🔌 Aún no tienes exchange conectado.\n\nEscribe "conectar" y cuando lo tengas te ayudo a armar tu posición de holdeo.'
+        : '🔌 Aún no tienes ningún exchange conectado.\n\nEscribe "conectar" para agregar Bitso, Binance, Bybit o tu cartera fría.';
+      return { response: noWalletMsg };
     }
-
     const byExchange = wallet.reduce((acc, b) => {
       if (!acc[b.exchange]) acc[b.exchange] = [];
       acc[b.exchange].push(b);
       return acc;
     }, {} as Record<string, WalletBalance[]>);
-
     let response = '🛸 **Tu portafolio eelienX:**\n\n';
     for (const [exchange, balances] of Object.entries(byExchange)) {
       response += `**${exchange.toUpperCase()}**\n`;
@@ -187,12 +218,23 @@ function getAgentResponse(
       }
       response += '\n';
     }
-
+    if (isHodler) response += '🧊 Tu posición está activa. ¿Quieres acumular más o moverlo a custodia fría?';
+    if (isTrader) response += '🔥 ¿Quieres que analice una entrada o salida ahora?';
     return { response };
   }
 
   if (lowerInput.includes('análisis') || lowerInput.includes('analisis') || lowerInput.includes('buen momento') || lowerInput.includes('recomend')) {
-    return { response: getMarketAnalysis(prices) };
+    const base = getMarketAnalysis(prices);
+    if (isTrader) {
+      const btc = prices.BTC;
+      const entry = btc?.price ? `$${(btc.price * 0.998).toLocaleString(undefined, {maximumFractionDigits: 0})}` : '—';
+      const stop  = btc?.price ? `$${(btc.price * 0.97).toLocaleString(undefined, {maximumFractionDigits: 0})}` : '—';
+      return { response: `${base}\n\n🎯 **Para traders:**\nZona de entrada sugerida: ${entry}\nStop loss recomendado: ${stop} (-3%)\n\n¿Ejecuto la orden? Solo di cuánto quieres comprar y **tú confirmas antes de que jale el gatillo**.` };
+    }
+    if (isHodler) {
+      return { response: `${base}\n\n🧊 **Para hodlers:**\nSi tu horizonte es +1 año, las correcciones son oportunidades de acumular — no de vender.\n\n¿Quieres que acumule una posición ahora? Lo hago, pero **siempre con tu confirmación primero**.` };
+    }
+    return { response: base };
   }
 
   if (lowerInput.includes('conectar') || lowerInput.includes('agregar exchange') || lowerInput.includes('añadir')) {
@@ -204,12 +246,18 @@ function getAgentResponse(
       return { response: '🔌 Para operar necesitas conectar un exchange primero.\n\nEscribe "conectar" o usa el botón de arriba.' };
     }
     const btc = prices.BTC;
+    const btcPrice = btc?.price || 67000;
+    const context = isTrader
+      ? `📊 **Análisis técnico antes de entrar:**\nBTC ${btc?.change && btc.change > 0 ? '📈 en tendencia alcista' : '📉 en corrección'} — Cambio 24h: ${btc?.change?.toFixed(2)}%\nSoporte: ~$${(btcPrice * 0.97).toLocaleString(undefined, {maximumFractionDigits:0})} | RSI estimado: ${btc?.change && btc.change > 3 ? '68 (zona alta, riesgo medio)' : btc?.change && btc.change < -3 ? '32 (zona baja, posible rebote)' : '50 (neutral)'}\n\n`
+      : isHodler
+      ? `🧊 **Contexto para holdeo:**\nBTC tiene un historial de ~+200% por ciclo de 4 años. Si tu horizonte es +1 año, entrar ahora tiene sentido histórico.\n\n`
+      : '';
     return {
-      response: `🔐 Para comprar Bitcoin necesito tu autorización...`,
+      response: `${context}🔐 Quieres comprar Bitcoin. Dame el monto y ejecuto la orden — pero **primero necesito que me confirmes**:`,
       needsPermission: true,
       permissionData: {
         action: 'Comprar Bitcoin (BTC)',
-        details: `Comprar 0.001 BTC (~$${((btc?.price || 67000) * 0.001 * 17.5).toLocaleString()} MXN) en ${connected.find(c => c.type === 'exchange')?.label || 'tu exchange'}`,
+        details: `Comprar 0.001 BTC (~$${(btcPrice * 0.001 * 17.5).toLocaleString()} MXN) en ${connected.find(c => c.type === 'exchange')?.label || 'tu exchange'}`,
       }
     };
   }
@@ -218,8 +266,12 @@ function getAgentResponse(
     if (connected.filter(c => c.type === 'exchange').length === 0) {
       return { response: '🔌 Para operar necesitas conectar un exchange primero.' };
     }
+    const btc = prices.BTC;
+    const sellContext = isHodler && btc?.change && btc.change < -5
+      ? '⚠️ **Ojo:** Estás en perfil hodler y el mercado está en caída. Vender en pánico suele ser la peor decisión histórica. ¿Seguro quieres proceder?\n\n'
+      : '';
     return {
-      response: '🔐 Para realizar esta venta necesito tu autorización...',
+      response: `${sellContext}🔐 Para realizar esta venta necesito tu autorización:`,
       needsPermission: true,
       permissionData: {
         action: 'Vender USDT → MXN',
@@ -229,14 +281,14 @@ function getAgentResponse(
   }
 
   if (lowerInput.includes('ayuda') || lowerInput.includes('qué puedes hacer') || lowerInput.includes('que puedes')) {
-    return { response: '👽 Soy **eelienX Protocol**. Esto es lo que puedo hacer:\n\n📊 **Precios** — BTC, ETH, SOL, BNB, DOGE, AVAX, ADA, MATIC y más\n🧠 **Análisis** — te digo si es buen o mal momento\n💰 **Portafolio** — conecta Bitso, Binance o Bybit\n🔔 **Alertas** — "avísame si BTC baja de $80,000"\n📈 **Rendimiento** — gráfica desde tu capital inicial\n🧊 **Cartera fría** — monitorea Ledger o MetaMask\n🏦 **Operar** — compra/vende con tu autorización\n\nTú mandas, yo ejecuto. 🛸' };
+    return { response: '👽 Soy **eelienX Protocol**. Esto es lo que puedo hacer:\n\n📊 **Precios** — BTC, ETH, SOL, BNB, DOGE, AVAX, ADA, MATIC y más\n🧠 **Análisis** — te digo si es buen o mal momento\n💰 **Portafolio** — conecta Bitso, Binance o Bybit\n🔔 **Alertas** — "avísame si BTC baja de $80,000"\n📈 **Rendimiento** — gráfica desde tu capital inicial\n🧊 **Cartera fría** — monitorea Ledger o MetaMask\n🏦 **Operar** — compra/vende con tu autorización\n\nTú mandas, yo ejecuto — **siempre y cuando tú me confirmes**. 🛸' };
   }
 
   if (lowerInput.includes('reset') && lowerInput.includes('portafolio')) {
     return { response: 'Para reiniciar tu registro de rendimiento escribe:\n"quiero reiniciar mi registro"\n\nEsto borrará el historial actual y empezarás de cero.' };
   }
 
-  return { response: '👽 Entendido. ¿Podrías ser más específico?\n\nPrueba con:\n• "precios" — ver cotizaciones\n• "análisis" — saber si es buen momento\n• "mi saldo" — ver tu portafolio\n• "comprar bitcoin" — ejecutar operación\n• "conectar" — agregar un exchange' };
+  return { response: '👽 Entendido. ¿Podrías ser más específico?\n\nPrueba con:\n• "precios BTC" — cotización con análisis\n• "análisis" — saber si es buen momento\n• "holdeo" — estrategia de largo plazo\n• "comprar bitcoin" — ejecutar operación\n• "mi saldo" — ver tu portafolio' };
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
