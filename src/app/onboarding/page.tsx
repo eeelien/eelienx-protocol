@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // ── Copy strategies data ────────────────────────────────────────────────────
 
@@ -114,6 +114,15 @@ export default function OnboardingPage() {
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showTraderWarning, setShowTraderWarning] = useState(false);
+
+  useEffect(() => {
+    // Show trader warning only first time
+    if (profile === 'trader' && step === 'method') {
+      const seen = localStorage.getItem('eelienx_trader_warning_seen');
+      if (!seen) setShowTraderWarning(true);
+    }
+  }, [profile, step]);
 
   // Suggested defaults by profile
   const suggested = {
@@ -173,15 +182,14 @@ export default function OnboardingPage() {
           <div className="text-5xl mb-4">🧊</div>
           <h2 className="text-xl font-bold mb-1">Holdear</h2>
           <p className="text-blue-300 text-sm font-medium mb-4">El tiempo trabaja por mi dinero</p>
-          <ul className="space-y-2 text-sm text-gray-300">
-            <li className="flex gap-2"><span className="text-blue-400">✓</span> Rendimientos a largo plazo</li>
-            <li className="flex gap-2"><span className="text-blue-400">✓</span> Sin estrés de operar a diario</li>
-            <li className="flex gap-2"><span className="text-blue-400">✓</span> Basado en estrategias de millonarios</li>
-            <li className="flex gap-2"><span className="text-blue-400">✓</span> BTC ha subido ~200% cada 4 años</li>
+          <ul className="space-y-2 text-sm text-gray-300 mb-4">
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Rendimientos a largo plazo</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Sin estrés de operar a diario</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> Estrategias de inversores millonarios</li>
+            <li className="flex gap-2"><span className="text-green-400">✓</span> BTC ha subido ~200% cada 4 años</li>
+            <li className="flex gap-2"><span className="text-red-400">✗</span> El mercado puede bajar antes de subir</li>
+            <li className="flex gap-2"><span className="text-red-400">✗</span> Requiere paciencia — no es inmediato</li>
           </ul>
-          <div className="mt-5 text-xs text-gray-600 border-t border-gray-800 pt-4">
-            ⚠️ Riesgo: el mercado puede bajar antes de subir. El agente te protege con stop loss.
-          </div>
           <div className="mt-3 text-blue-400 font-semibold text-sm group-hover:underline">Elegir Holdear →</div>
         </button>
 
@@ -197,10 +205,38 @@ export default function OnboardingPage() {
             <li className="flex gap-2"><span className="text-orange-400">✓</span> Copia a traders exitosos del momento</li>
             <li className="flex gap-2"><span className="text-orange-400">✓</span> Tú confirmas antes de cada orden</li>
           </ul>
-          <div className="mt-5 text-xs text-gray-600 border-t border-gray-800 pt-4">
-            ⚠️ Riesgo: mayor rentabilidad posible, mayor exposición. Stop loss obligatorio.
-          </div>
           <div className="mt-3 text-orange-400 font-semibold text-sm group-hover:underline">Elegir Tradear →</div>
+        </button>
+      </div>
+    </main>
+  );
+
+  // ── Trader risk warning modal (first time only) ──
+  if (showTraderWarning) return (
+    <main className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-gray-900 border-2 border-orange-500/50 rounded-2xl p-8 text-center">
+        <div className="text-5xl mb-4">⚠️</div>
+        <h2 className="text-xl font-bold mb-3 text-orange-400">Trading conlleva riesgo real</h2>
+        <p className="text-gray-400 text-sm leading-relaxed mb-6">
+          El trading activo puede generar ganancias rápidas, pero también pérdidas significativas.<br/><br/>
+          <strong className="text-white">El agente nunca ejecuta sin tu confirmación</strong> — pero el riesgo del mercado siempre existe. Solo opera con dinero que puedes perder sin que afecte tu vida.
+        </p>
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6 text-left text-sm text-gray-300 space-y-2">
+          <p>🛑 Configuraremos un <strong>Stop Loss</strong> para limitar pérdidas</p>
+          <p>🎯 Configuraremos un <strong>Take Profit</strong> para asegurar ganancias</p>
+          <p>👽 El agente te guía en cada paso</p>
+        </div>
+        <button
+          onClick={() => {
+            localStorage.setItem('eelienx_trader_warning_seen', '1');
+            setShowTraderWarning(false);
+          }}
+          className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold transition-all cursor-pointer">
+          Entendido, quiero continuar 🔥
+        </button>
+        <button onClick={() => { setProfile(null); setStep('profile'); setShowTraderWarning(false); }}
+          className="mt-3 text-gray-600 hover:text-gray-400 text-sm w-full">
+          ← Volver a elegir perfil
         </button>
       </div>
     </main>
