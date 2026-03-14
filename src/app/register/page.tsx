@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+const DEMO_SEED = 'wallet galaxy token shield lunar orbit digital crypto signal secure vault apex';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,6 +15,12 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [seedPhrase, setSeedPhrase] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.search.includes('demo=1')) {
+      setSeedPhrase(DEMO_SEED);
+    }
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
