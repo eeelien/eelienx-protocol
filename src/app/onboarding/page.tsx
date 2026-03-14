@@ -117,6 +117,14 @@ export default function OnboardingPage() {
   const [showTraderWarning, setShowTraderWarning] = useState(false);
 
   useEffect(() => {
+    // Auto-reset if ?reset=1 in URL
+    if (typeof window !== 'undefined' && window.location.search.includes('reset=1')) {
+      localStorage.clear();
+      window.history.replaceState({}, '', '/onboarding');
+    }
+  }, []);
+
+  useEffect(() => {
     // Show trader warning only first time
     if (profile === 'trader' && step === 'method') {
       const seen = localStorage.getItem('eelienx_trader_warning_seen');
