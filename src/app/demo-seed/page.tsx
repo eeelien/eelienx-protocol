@@ -6,7 +6,55 @@ const WORDS = ['wallet','galaxy','token','shield','lunar','orbit','digital','cry
 
 export default function DemoSeedPage() {
   const router = useRouter();
+  const [step, setStep] = useState<'form'|'seed'>('form');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+
+  if (step === 'form') {
+    return (
+      <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="text-5xl mb-3">👽</div>
+            <h1 className="text-2xl font-bold text-white">Crear cuenta</h1>
+            <p className="text-gray-400 text-sm mt-1">Tu agente crypto personal</p>
+          </div>
+          <div className="bg-[#0d0d1a] border border-purple-500/20 rounded-2xl p-6 flex flex-col gap-4">
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Correo electrónico</label>
+              <input
+                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                placeholder="tu@correo.com"
+                className="w-full bg-[#1a1a2e] border border-gray-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500"/>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Contraseña</label>
+              <input
+                type="password" value={password} onChange={e => setPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                className="w-full bg-[#1a1a2e] border border-gray-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500"/>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Confirmar contraseña</label>
+              <input
+                type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
+                placeholder="Repite tu contraseña"
+                className="w-full bg-[#1a1a2e] border border-gray-700 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500"/>
+            </div>
+            <button
+              onClick={() => setStep('seed')}
+              className="w-full py-3 rounded-xl font-bold text-white mt-2"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
+              Crear cuenta →
+            </button>
+            <p className="text-center text-xs text-gray-500">¿Ya tienes cuenta? <a href="/login" className="text-purple-400">Inicia sesión</a></p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050510] flex items-center justify-center p-4">
