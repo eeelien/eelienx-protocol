@@ -1,0 +1,71 @@
+{
+  "name": "eelienX Protocol Agent",
+  "version": "1.0.0",
+  "description": "Autonomous trading agent for Ethereum/EVM markets. Analyzes market conditions, executes trades via copy trading or independent strategies, and manages risk autonomously.",
+  "agent_id": "eelienx-protocol-agent-v1",
+  "operator_wallet": "0x39EL000000000000000000000000000000000000",
+  "erc8004_identity": "PENDING_REGISTRATION",
+  "supported_tools": [
+    "market_analysis",
+    "trade_execution",
+    "copy_trading",
+    "risk_management",
+    "wallet_connect",
+    "bitso_exchange_api",
+    "eth_rpc",
+    "price_feed"
+  ],
+  "tech_stack": {
+    "frontend": "Next.js 14 + React + Tailwind CSS",
+    "backend": "Next.js API Routes (Node.js)",
+    "blockchain": "Base Sepolia + Ethereum Mainnet (ethers.js)",
+    "exchange": "Bitso API (ETH/MXN, BTC/MXN)",
+    "database": "Supabase (PostgreSQL)",
+    "auth": "JWT sessions + encrypted API key storage",
+    "ui": "React Three Fiber (3D game) + CSS 2D game"
+  },
+  "compute_constraints": {
+    "max_trade_usd": 500,
+    "max_risk_pct": 20,
+    "cooldown_ms": 5000,
+    "max_retries": 3,
+    "budget_per_session": "0.01 ETH equivalent"
+  },
+  "task_categories": [
+    "autonomous_trading",
+    "copy_trading",
+    "risk_assessment",
+    "market_analysis",
+    "portfolio_management",
+    "whale_tracking"
+  ],
+  "capabilities": {
+    "autonomous_cycle": true,
+    "multi_strategy": true,
+    "copy_trading": true,
+    "risk_guards": true,
+    "real_exchange": true,
+    "game_interface": true
+  },
+  "endpoints": {
+    "trade": "POST /api/trade",
+    "agent_action": "POST /api/agent-action",
+    "game": "/game2",
+    "docs": "/agent.json",
+    "log": "/agent_log.json"
+  },
+  "safeguards": [
+    "Risk detection cancels trade (20% of trades rejected as high risk)",
+    "Max trade size enforced server-side",
+    "Encrypted API keys — never stored in plaintext",
+    "JWT session validation on all authenticated routes",
+    "Stop-loss logic in autonomous mode"
+  ],
+  "registered_at": "2026-03-22T00:00:00Z",
+  "hackathon": "Synthesis 2026",
+  "tracks": [
+    "autonomous_trading_agent",
+    "protocol_labs_let_agent_cook",
+    "base_agent_service_x402"
+  ]
+}
