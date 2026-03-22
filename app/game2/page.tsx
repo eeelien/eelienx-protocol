@@ -165,7 +165,7 @@ function MoneyRain() {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Screen = 'home' | 'manual' | 'copy' | 'executing' | 'result'
+type Screen = 'home' | 'path' | 'manual' | 'copy' | 'hodl' | 'stocks' | 'executing' | 'result'
 interface TradeResult { profit: number; action: string; message: string; win: boolean; real?: boolean }
 
 // ── Session + Balance hook ────────────────────────────────────────────────────
@@ -398,6 +398,353 @@ function buildTip(p: PriceData | null) {
   if (chg >= 5)    return { msg: `ETH subió ${pct}% en 24h — precio $${fmt(p.last)} MXN. Considera toma parcial de ganancias.`, risk: 'MEDIO', riskC: '#f5a623' }
   if (chg >= 2)    return { msg: `ETH en $${fmt(p.last)} MXN, +${pct}% hoy. Momentum alcista activo.`, risk: 'MEDIO', riskC: '#f5a623' }
   return { msg: `ETH en $${fmt(p.last)} MXN, movimiento de ${chg > 0 ? '+' : ''}${pct}% en 24h. Mercado lateral — agente en espera.`, risk: 'ALTO', riskC: '#f5a623' }
+}
+
+
+// ── PATH SELECTOR ─────────────────────────────────────────────────────────────
+function PathScreen({ onPath, wallet, balance, loggedIn }: {
+  onPath: (p: 'quick'|'long') => void
+  wallet: ReturnType<typeof useWallet>; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean
+}) {
+  const [blink, setBlink] = useState(true)
+  useEffect(() => { const t = setInterval(() => setBlink(b => !b), 600); return () => clearInterval(t) }, [])
+  return (
+    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
+      {/* Stars */}
+      <div className="fixed inset-0 pointer-events-none">
+        {Array.from({length:20}).map((_,i) => (
+          <div key={i} className="absolute rounded-full bg-white"
+            style={{ width:2,height:2,left:`${(i*5.1)%100}%`,top:`${(i*6.7)%75}%`,opacity:0.15+(i%4)*0.1 }} />
+        ))}
+      </div>
+
+      {/* Wallet badge */}
+      <div className="relative z-10 flex justify-end px-5 pt-safe pt-4">
+        {wallet.address ? (
+          <button onClick={wallet.disconnect} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border"
+            style={{ background:'rgba(245,166,35,0.08)', borderColor:'rgba(245,166,35,0.30)' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] animate-pulse" />
+            <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>🦊 {wallet.short}</span>
+          </button>
+        ) : (
+          <button onClick={wallet.connect} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
+            style={{ background:'rgba(245,166,35,0.06)', borderColor:'rgba(245,166,35,0.25)' }}>
+            <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>🦊 Conectar Wallet</span>
+          </button>
+        )}
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center gap-6">
+        {/* Alien */}
+        <div style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
+          <PixelAlien state="idle" size={2} />
+        </div>
+        <h1 className="font-mono font-black text-4xl" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470' }}>
+          eelie<span style={{color:'#fff'}}>n</span>X
+        </h1>
+        <p className="font-mono text-sm font-bold" style={{color: blink ? '#00ff88' : 'rgba(0,255,136,0.3)', transition:'color 0.1s'}}>
+          ¿Cuál es tu estilo? 👽
+        </p>
+
+        {/* Two big paths */}
+        <div className="flex flex-col gap-4 w-full max-w-sm mt-2">
+          <button onClick={() => { playSound('click'); onPath('quick') }}
+            className="rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
+            style={{ borderColor:'#f5a623', background:'rgba(245,166,35,0.06)' }}>
+            <p className="font-mono text-xl font-black mb-1" style={{color:'#f5a623'}}>🚀 Quiero dinero</p>
+            <p className="font-mono text-xl font-black mb-2" style={{color:'#f5a623'}}>rápido y fácil</p>
+            <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.40)'}}>Copia traders top o dale órdenes a tu agente — opera ETH/MXN en tiempo real</p>
+          </button>
+
+          <button onClick={() => { playSound('click'); onPath('long') }}
+            className="rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
+            style={{ borderColor:'#00ff88', background:'rgba(0,255,136,0.06)' }}>
+            <p className="font-mono text-xl font-black mb-1" style={{color:'#00ff88'}}>💎 Quiero dinero</p>
+            <p className="font-mono text-xl font-black mb-2" style={{color:'#00ff88'}}>seguro a largo plazo</p>
+            <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.40)'}}>Copia los portafolios de los mejores HODLers e inversores del mundo — el agente automatiza todo</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── HODL SCREEN ───────────────────────────────────────────────────────────────
+const HODLERS = [
+  {
+    name: 'Michael Saylor',
+    handle: '@saylor',
+    emoji: '🟧',
+    color: '#F7931A',
+    title: 'Bitcoin Maximalist',
+    holding: '214,246 BTC',
+    gain1y: '+127%',
+    strategy: 'Never sell. Accumulate Bitcoin every month. Ignore volatility.',
+    portfolio: [
+      { asset: 'BTC', alloc: 95, color: '#F7931A' },
+      { asset: 'USD', alloc: 5,  color: '#555' },
+    ],
+  },
+  {
+    name: 'Cathie Wood',
+    handle: '@cathiedwood',
+    emoji: '🏹',
+    color: '#7B2FFF',
+    title: 'Innovation HODLer',
+    holding: 'ETH + BTC + alts',
+    gain1y: '+84%',
+    strategy: 'Hold disruptive assets 5–10 years. Add on dips. DCA monthly.',
+    portfolio: [
+      { asset: 'ETH', alloc: 45, color: '#7B2FFF' },
+      { asset: 'BTC', alloc: 35, color: '#F7931A' },
+      { asset: 'SOL', alloc: 20, color: '#14F195' },
+    ],
+  },
+  {
+    name: 'Vitalik Buterin',
+    handle: '@vitalikbuterin',
+    emoji: '🔷',
+    color: '#627EEA',
+    title: 'ETH Ecosystem',
+    holding: 'ETH + L2s + DeFi',
+    gain1y: '+93%',
+    strategy: 'Believe in the ecosystem. Hold ETH + stake for yield. Diversify into L2 tokens.',
+    portfolio: [
+      { asset: 'ETH', alloc: 70, color: '#627EEA' },
+      { asset: 'L2s', alloc: 20, color: '#00D4FF' },
+      { asset: 'DeFi', alloc: 10, color: '#00ff88' },
+    ],
+  },
+]
+
+function HodlScreen({ onExecute, onBack }: { onExecute: (a:string)=>void; onBack:()=>void }) {
+  const [sel, setSel] = useState<number|null>(null)
+  const [amount, setAmount] = useState('500')
+  const [confirm, setConfirm] = useState(false)
+  const hodler = sel !== null ? HODLERS[sel] : null
+
+  return (
+    <div className="flex flex-col min-h-dvh" style={{background:'#0d0d1a'}}>
+      <div className="flex items-center justify-between px-5 pt-safe pt-4 pb-3 border-b" style={{borderColor:'rgba(255,255,255,0.06)'}}>
+        <button onClick={onBack} className="font-mono text-xs active:opacity-60 p-1" style={{color:'#555'}}>← VOLVER</button>
+        <span className="font-mono text-sm font-bold" style={{color:'#00ff88'}}>💎 HODL STRATEGY</span>
+        <span className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>LARGO PLAZO</span>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
+        <div className="text-center py-2">
+          <p className="font-mono text-sm font-black text-white mb-0.5">Los mejores HODLers del mundo</p>
+          <p className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.30)'}}>El agente copia sus portafolios automáticamente · Solo pide tu permiso una vez</p>
+        </div>
+
+        {HODLERS.map((h, i) => (
+          <button key={h.name} onClick={() => { playSound('click'); setSel(i); setConfirm(false) }}
+            className="w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition-all"
+            style={{ borderColor: sel===i ? h.color : 'rgba(255,255,255,0.07)', background: sel===i ? `${h.color}10` : 'rgba(255,255,255,0.02)' }}>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{h.emoji}</span>
+                <div>
+                  <p className="font-mono text-sm font-black text-white">{h.name}</p>
+                  <p className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.35)'}}>{h.handle} · {h.title}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-lg font-black" style={{color:'#00ff88'}}>{h.gain1y}</p>
+                <p className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.30)'}}>últimos 12m</p>
+              </div>
+            </div>
+            {/* Portfolio bar */}
+            <div className="flex rounded-full overflow-hidden h-2 mb-2">
+              {h.portfolio.map(p => (
+                <div key={p.asset} style={{width:`${p.alloc}%`, background:p.color}} />
+              ))}
+            </div>
+            <div className="flex gap-3">
+              {h.portfolio.map(p => (
+                <span key={p.asset} className="font-mono text-[9px]" style={{color:p.color}}>{p.asset} {p.alloc}%</span>
+              ))}
+            </div>
+          </button>
+        ))}
+
+        {hodler && (
+          <div className="rounded-2xl border p-4" style={{background:'rgba(0,255,136,0.04)',borderColor:'rgba(0,255,136,0.20)'}}>
+            <p className="font-mono text-[10px] mb-2" style={{color:'rgba(255,255,255,0.55)'}}>🧠 Estrategia: <span style={{color:'#00ff88'}}>"{hodler.strategy}"</span></p>
+            <p className="font-mono text-[9px] mb-3" style={{color:'rgba(255,255,255,0.35)'}}>El agente comprará automáticamente los mismos activos en las mismas proporciones. DCA mensual.</p>
+            <p className="font-mono text-xs font-bold text-white mb-2">¿Cuánto quieres invertir al mes?</p>
+            <div className="grid grid-cols-4 gap-2 mb-2">
+              {['200','500','1000','2000'].map(v => (
+                <button key={v} onClick={() => setAmount(v)}
+                  className="rounded-xl py-2 font-mono text-xs font-bold transition-all"
+                  style={{background: amount===v ? hodler.color : 'rgba(255,255,255,0.06)', color: amount===v ? 'white' : 'rgba(255,255,255,0.45)'}}>
+                  ${v}
+                </button>
+              ))}
+            </div>
+            {/* Permission confirm */}
+            <button onClick={() => setConfirm(c => !c)}
+              className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 border active:scale-95 transition-all"
+              style={{borderColor: confirm ? '#00ff88' : 'rgba(255,255,255,0.12)', background: confirm ? 'rgba(0,255,136,0.08)' : 'transparent'}}>
+              <span className="font-mono text-sm">{confirm ? '✅' : '⬜'}</span>
+              <span className="font-mono text-[10px] text-left" style={{color: confirm ? '#00ff88' : 'rgba(255,255,255,0.45)'}}>
+                Autorizo al agente a ejecutar ${amount} MXN/mes en este portafolio
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 pb-safe pb-6 pt-3 border-t" style={{borderColor:'rgba(255,255,255,0.06)'}}>
+        <button disabled={!hodler || !confirm}
+          onClick={() => { playSound('execute'); onExecute(`HODL·${hodler!.name.toUpperCase()}·${amount}MXN`) }}
+          className="w-full rounded-2xl py-5 font-mono font-black text-base active:scale-95 transition-all disabled:opacity-25"
+          style={{
+            background: (hodler && confirm) ? `linear-gradient(135deg,#00ff88,${hodler.color})` : 'rgba(255,255,255,0.05)',
+            color:'white', boxShadow: (hodler && confirm) ? '0 8px 30px rgba(0,255,136,0.30)' : 'none',
+          }}>
+          {hodler && confirm ? `💎 Activar HODL · ${hodler.name} · $${amount}/mes` : hodler ? '⬆ Autoriza para continuar' : '💎 Elige un HODLer'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── STOCKS SCREEN ─────────────────────────────────────────────────────────────
+const STOCK_INVESTORS = [
+  {
+    name: 'Warren Buffett',
+    handle: '@berkshire',
+    emoji: '🏦',
+    color: '#2E7D6B',
+    title: 'Value Investing',
+    gain1y: '+21%',
+    strategy: 'Buy great companies at fair prices. Hold forever. Dividends are king.',
+    portfolio: [
+      { asset: 'AAPL', alloc: 45, color: '#A8B2C1' },
+      { asset: 'BAC',  alloc: 15, color: '#2E7D6B' },
+      { asset: 'KO',   alloc: 10, color: '#C0392B' },
+      { asset: 'OXY',  alloc: 30, color: '#B85C00' },
+    ],
+  },
+  {
+    name: 'Ray Dalio',
+    handle: '@raydalio',
+    emoji: '⚖️',
+    color: '#5e72e4',
+    title: 'All Weather Portfolio',
+    gain1y: '+18%',
+    strategy: 'Diversify across all economic environments. 30% stocks, 40% bonds, 30% commodities + gold.',
+    portfolio: [
+      { asset: 'SPY',  alloc: 30, color: '#5e72e4' },
+      { asset: 'GOLD', alloc: 25, color: '#F3BA2F' },
+      { asset: 'BOND', alloc: 30, color: '#888' },
+      { asset: 'COMM', alloc: 15, color: '#B85C00' },
+    ],
+  },
+  {
+    name: 'Cathie Wood',
+    handle: '@cathiedwood',
+    emoji: '🚀',
+    color: '#7B2FFF',
+    title: 'Disruptive Innovation',
+    gain1y: '+67%',
+    strategy: 'Bet on the future: AI, robotics, genomics, fintech. 5-year minimum horizon.',
+    portfolio: [
+      { asset: 'TSLA', alloc: 25, color: '#CC0000' },
+      { asset: 'NVDA', alloc: 20, color: '#76B900' },
+      { asset: 'COIN', alloc: 15, color: '#0052FF' },
+      { asset: 'MSTR', alloc: 40, color: '#F7931A' },
+    ],
+  },
+]
+
+function StocksScreen({ onExecute, onBack }: { onExecute: (a:string)=>void; onBack:()=>void }) {
+  const [sel, setSel] = useState<number|null>(null)
+  const [amount, setAmount] = useState('500')
+  const [confirm, setConfirm] = useState(false)
+  const investor = sel !== null ? STOCK_INVESTORS[sel] : null
+
+  return (
+    <div className="flex flex-col min-h-dvh" style={{background:'#0d0d1a'}}>
+      <div className="flex items-center justify-between px-5 pt-safe pt-4 pb-3 border-b" style={{borderColor:'rgba(255,255,255,0.06)'}}>
+        <button onClick={onBack} className="font-mono text-xs active:opacity-60 p-1" style={{color:'#555'}}>← VOLVER</button>
+        <span className="font-mono text-sm font-bold" style={{color:'#5e72e4'}}>📈 ACCIONES</span>
+        <span className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>LARGO PLAZO</span>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
+        <div className="text-center py-2">
+          <p className="font-mono text-sm font-black text-white mb-0.5">Los mejores inversores del mundo</p>
+          <p className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.30)'}}>El agente copia sus posiciones · Solo pide permiso para tomar el dinero y ejecutar</p>
+        </div>
+
+        {STOCK_INVESTORS.map((inv, i) => (
+          <button key={inv.name} onClick={() => { playSound('click'); setSel(i); setConfirm(false) }}
+            className="w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition-all"
+            style={{ borderColor: sel===i ? inv.color : 'rgba(255,255,255,0.07)', background: sel===i ? `${inv.color}10` : 'rgba(255,255,255,0.02)' }}>
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{inv.emoji}</span>
+                <div>
+                  <p className="font-mono text-sm font-black text-white">{inv.name}</p>
+                  <p className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.35)'}}>{inv.handle} · {inv.title}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-lg font-black" style={{color:'#5e72e4'}}>{inv.gain1y}</p>
+                <p className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.30)'}}>últimos 12m</p>
+              </div>
+            </div>
+            <div className="flex rounded-full overflow-hidden h-2 mb-2">
+              {inv.portfolio.map(p => <div key={p.asset} style={{width:`${p.alloc}%`, background:p.color}} />)}
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              {inv.portfolio.map(p => (
+                <span key={p.asset} className="font-mono text-[9px]" style={{color:p.color}}>{p.asset} {p.alloc}%</span>
+              ))}
+            </div>
+          </button>
+        ))}
+
+        {investor && (
+          <div className="rounded-2xl border p-4" style={{background:'rgba(94,114,228,0.05)',borderColor:'rgba(94,114,228,0.20)'}}>
+            <p className="font-mono text-[10px] mb-2" style={{color:'rgba(255,255,255,0.55)'}}>🧠 Estrategia: <span style={{color:'#5e72e4'}}>"{investor.strategy}"</span></p>
+            <p className="font-mono text-xs font-bold text-white mb-2">¿Cuánto quieres invertir al mes?</p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {['200','500','1000','2000'].map(v => (
+                <button key={v} onClick={() => setAmount(v)}
+                  className="rounded-xl py-2 font-mono text-xs font-bold transition-all"
+                  style={{background: amount===v ? investor.color : 'rgba(255,255,255,0.06)', color: amount===v ? 'white' : 'rgba(255,255,255,0.45)'}}>
+                  ${v}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setConfirm(c => !c)}
+              className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 border active:scale-95 transition-all"
+              style={{borderColor: confirm ? investor.color : 'rgba(255,255,255,0.12)', background: confirm ? `${investor.color}12` : 'transparent'}}>
+              <span className="font-mono text-sm">{confirm ? '✅' : '⬜'}</span>
+              <span className="font-mono text-[10px] text-left" style={{color: confirm ? investor.color : 'rgba(255,255,255,0.45)'}}>
+                Autorizo al agente a invertir ${amount} MXN/mes en este portafolio
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 pb-safe pb-6 pt-3 border-t" style={{borderColor:'rgba(255,255,255,0.06)'}}>
+        <button disabled={!investor || !confirm}
+          onClick={() => { playSound('execute'); onExecute(`STOCKS·${investor!.name.toUpperCase()}·${amount}MXN`) }}
+          className="w-full rounded-2xl py-5 font-mono font-black text-base active:scale-95 transition-all disabled:opacity-25"
+          style={{
+            background: (investor && confirm) ? `linear-gradient(135deg,${investor.color},#5e72e4)` : 'rgba(255,255,255,0.05)',
+            color:'white', boxShadow: (investor && confirm) ? `0 8px 30px ${investor.color}40` : 'none',
+          }}>
+          {investor && confirm ? `📈 Activar · ${investor.name} · $${amount}/mes` : investor ? '⬆ Autoriza para continuar' : '📈 Elige un inversor'}
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ── TRADE HISTORY ────────────────────────────────────────────────────────────────
@@ -887,14 +1234,41 @@ export default function Game2() {
     setScreen('result')
   }
 
-  if (screen === 'home')      return (
+  if (screen === 'home')      return <PathScreen onPath={p => setScreen(p === 'quick' ? 'path' : 'hodl')} wallet={wallet} balance={balance} loggedIn={loggedIn} />
+  if (screen === 'path')      return (
     <>
       <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} wallet={wallet} />
       <div style={{position:'fixed',bottom:'80px',left:0,right:0,zIndex:20}}><HistoryPanel hist={hist} total={total} /></div>
     </>
   )
-  if (screen === 'manual')    return <ManualScreen onExecute={executeTrade} onBack={() => setScreen('home')} loggedIn={loggedIn} />
-  if (screen === 'copy')      return <CopyScreen  onExecute={executeTrade} onBack={() => setScreen('home')} loggedIn={loggedIn} />
+  if (screen === 'hodl')      return (
+    <div className="flex flex-col min-h-dvh" style={{background:'#0d0d1a'}}>
+      <div className="flex items-center justify-between px-5 pt-safe pt-4 pb-3 border-b" style={{borderColor:'rgba(255,255,255,0.06)'}}>
+        <button onClick={() => setScreen('home')} className="font-mono text-xs active:opacity-60 p-1" style={{color:'#555'}}>← VOLVER</button>
+        <span className="font-mono text-sm font-bold" style={{color:'#00ff88'}}>💎 LARGO PLAZO</span>
+        <span />
+      </div>
+      <div className="flex-1 flex flex-col gap-4 px-5 py-6 items-center justify-center">
+        <p className="font-mono text-base font-black text-white mb-2">¿Cómo quieres invertir?</p>
+        <button onClick={() => { playSound('click'); setScreen('hodlscreen' as Screen) }}
+          className="w-full max-w-sm rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
+          style={{ borderColor:'#F7931A', background:'rgba(247,147,26,0.06)' }}>
+          <p className="font-mono text-lg font-black mb-1" style={{color:'#F7931A'}}>💎 HODL Crypto</p>
+          <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.40)'}}>Copia los mejores HODLers — BTC, ETH, SOL a largo plazo</p>
+        </button>
+        <button onClick={() => { playSound('click'); setScreen('stocks') }}
+          className="w-full max-w-sm rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
+          style={{ borderColor:'#5e72e4', background:'rgba(94,114,228,0.06)' }}>
+          <p className="font-mono text-lg font-black mb-1" style={{color:'#5e72e4'}}>📈 Acciones</p>
+          <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.40)'}}>Copia a Buffett, Dalio, Cathie Wood — los mejores inversores del mundo</p>
+        </button>
+      </div>
+    </div>
+  )
+  if (screen === ('hodlscreen' as Screen)) return <HodlScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
+  if (screen === 'stocks')    return <StocksScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
+  if (screen === 'manual')    return <ManualScreen onExecute={executeTrade} onBack={() => setScreen('path')} loggedIn={loggedIn} />
+  if (screen === 'copy')      return <CopyScreen  onExecute={executeTrade} onBack={() => setScreen('path')} loggedIn={loggedIn} />
   if (screen === 'executing') return <ExecutingScreen action={tradeAction} />
   if (screen === 'result' && result) return <ResultScreen result={result} onReplay={() => { setResult(null); setScreen('home') }} />
   return null
