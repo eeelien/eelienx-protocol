@@ -1,7 +1,120 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+
+
+// ── CANDLESTICK CHART ─────────────────────────────────────────────────────────
+interface Candle { o: number; h: number; l: number; c: number }
+
+function CandleChart({ candles, annotations = [], height = 140 }: {
+  candles: Candle[]; annotations?: { x: number; label: string; color: string; arrow?: 'up'|'down' }[]; height?: number
+}) {
+  const W = 280, H = height
+  const prices = candles.flatMap(c => [c.h, c.l])
+  const minP = Math.min(...prices), maxP = Math.max(...prices)
+  const range = maxP - minP || 1
+  const py = (p: number) => ((maxP - p) / range) * (H - 20) + 10
+  const cw = Math.floor(W / candles.length) - 4
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{background:'#0d0d1a',borderRadius:12}}>
+      {/* Grid lines */}
+      {[0.25,0.5,0.75].map(r => (
+        <line key={r} x1="0" y1={H*r} x2={W} y2={H*r} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+      ))}
+      {/* Candles */}
+      {candles.map((c, i) => {
+        const x = i * (W / candles.length) + 2
+        const isUp = c.c >= c.o
+        const color = isUp ? '#00ff88' : '#ff4444'
+        const bodyY = py(Math.max(c.o, c.c))
+        const bodyH = Math.abs(py(c.o) - py(c.c)) || 2
+        return (
+          <g key={i}>
+            <line x1={x + cw/2} y1={py(c.h)} x2={x + cw/2} y2={py(c.l)} stroke={color} strokeWidth="1.5" />
+            <rect x={x} y={bodyY} width={cw} height={bodyH} fill={color} rx="1" />
+          </g>
+        )
+      })}
+      {/* Annotations */}
+      {annotations.map((a, i) => {
+        const ax = a.x * (W / candles.length) + cw/2
+        return (
+          <g key={i}>
+            <line x1={ax} y1={a.arrow==='up'?H-4:4} x2={ax} y2={a.arrow==='up'?H*0.75:H*0.25} stroke={a.color} strokeWidth="1.5" strokeDasharray="3,2" />
+            <text x={ax} y={a.arrow==='up'?H+8:0} textAnchor="middle" fill={a.color} fontSize="9" fontFamily="monospace" fontWeight="bold">{a.label}</text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ── RSI LINE CHART ────────────────────────────────────────────────────────────
+function RSIChart({ values }: { values: number[] }) {
+  const W = 280, H = 80
+  const points = values.map((v, i) => `${(i / (values.length-1)) * W},${H - (v / 100) * H}`).join(' ')
+  const overbought = H - (70/100)*H
+  const oversold = H - (30/100)*H
+  return (
+    <svg viewBox={`0 0 ${W} ${H+20}`} className="w-full" style={{background:'#0d0d1a',borderRadius:12}}>
+      {/* Zones */}
+      <rect x="0" y="0" width={W} height={overbought} fill="rgba(255,68,68,0.08)" />
+      <rect x="0" y={oversold} width={W} height={H-oversold} fill="rgba(0,255,136,0.08)" />
+      {/* Lines */}
+      <line x1="0" y1={overbought} x2={W} y2={overbought} stroke="#ff4444" strokeWidth="1" strokeDasharray="4,3" />
+      <line x1="0" y1={oversold}   x2={W} y2={oversold}   stroke="#00ff88" strokeWidth="1" strokeDasharray="4,3" />
+      {/* Labels */}
+      <text x="4" y={overbought-3} fill="#ff4444" fontSize="8" fontFamily="monospace">70 — sobrecomprado</text>
+      <text x="4" y={oversold+10}  fill="#00ff88" fontSize="8" fontFamily="monospace">30 — sobrevendido ✓ entra aquí</text>
+      {/* RSI line */}
+      <polyline points={points} fill="none" stroke="#f5a623" strokeWidth="2" />
+    </svg>
+  )
+}
+
+// ── LIVE PRICE TICKER ─────────────────────────────────────────────────────────
+function LiveTicker() {
+  const [price, setPrice] = useState<number|null>(null)
+  const [chg, setChg] = useState<number|null>(null)
+  useEffect(() => {
+    fetch('/api/price').then(r=>r.json()).then(d=>{ setPrice(d.last); setChg(d.change24) }).catch(()=>{})
+  }, [])
+  if (!price) return <div className="text-center text-gray-600 text-xs py-4 font-mono">Cargando precio...</div>
+  const up = (chg??0) >= 0
+  return (
+    <div className="rounded-xl border p-3 text-center" style={{background:'rgba(255,255,255,0.04)',borderColor:'rgba(255,255,255,0.10)'}}>
+      <p className="font-mono text-[9px] text-gray-500 mb-1">ETH/MXN — precio en tiempo real (Bitso)</p>
+      <p className="font-mono text-2xl font-black" style={{color: up ? '#00ff88' : '#ff4444'}}>
+        ${price.toLocaleString('es-MX',{maximumFractionDigits:0})} MXN
+      </p>
+      <p className="font-mono text-xs mt-0.5" style={{color: up ? '#00ff88' : '#ff4444'}}>
+        {up?'+':''}{chg?.toFixed(1)}% últimas 24h
+      </p>
+      <p className="font-mono text-[9px] text-gray-600 mt-1">
+        {up ? '📈 Mercado alcista — observa patrones de entrada' : '📉 Mercado bajista — espera o busca soporte'}
+      </p>
+    </div>
+  )
+}
+
+// ── GOOD/BAD MARKET EXAMPLE ───────────────────────────────────────────────────
+const GOOD_CANDLES: Candle[] = [
+  {o:42,h:45,l:38,c:40},{o:40,h:41,l:36,c:37},{o:37,h:38,l:34,c:35},
+  {o:35,h:36,l:33,c:36},{o:36,h:42,l:35,c:41},{o:41,h:46,l:40,c:45},
+  {o:45,h:52,l:44,c:51},{o:51,h:56,l:49,c:55},{o:55,h:62,l:54,c:60},
+]
+const BAD_CANDLES: Candle[] = [
+  {o:60,h:65,l:58,c:64},{o:64,h:66,l:60,c:62},{o:62,h:63,l:55,c:57},
+  {o:57,h:58,l:50,c:51},{o:51,h:53,l:45,c:47},{o:47,h:49,l:41,c:43},
+  {o:43,h:44,l:36,c:38},{o:38,h:40,l:33,c:35},{o:35,h:37,l:30,c:32},
+]
+const SIGNAL_CANDLES: Candle[] = [
+  {o:44,h:46,l:40,c:42},{o:42,h:43,l:38,c:39},{o:39,h:40,l:36,c:37},
+  {o:37,h:38,l:34,c:38},{o:38,h:45,l:37,c:44},{o:44,h:51,l:43,c:50},
+  {o:50,h:58,l:49,c:57},
+]
 
 const lessons = [
   {
@@ -58,6 +171,7 @@ const lessons = [
         type: 'intro',
         text: 'Las velas japonesas son la forma más usada de ver el precio en crypto. Cada vela representa un período de tiempo (1h, 4h, 1 día).'
       },
+      { type: 'chart', chartType: 'candles_signal' },
       {
         type: 'key',
         title: 'Partes de una vela',
@@ -305,6 +419,31 @@ function LessonModal({ lesson, onClose, onComplete }: {
 
         {/* Content */}
         <div className="p-6">
+          {block.type === 'chart' && (
+            <div className="space-y-4">
+              {(block as {chartType?: string}).chartType === 'candles_signal' && (
+                <div className="space-y-3">
+                  <LiveTicker />
+                  <div>
+                    <p className="font-mono text-[10px] text-green-400 mb-1 font-bold">✅ Cuando entrar — señal alcista</p>
+                    <CandleChart candles={SIGNAL_CANDLES}
+                      annotations={[{x:3,label:'¡ENTRA!',color:'#00ff88',arrow:'up'},{x:6,label:'+30%',color:'#00ff88',arrow:'down'}]} />
+                    <p className="font-mono text-[9px] text-gray-500 mt-1">Caída → vela verde grande → sube. Este es el patrón de entrada clásico.</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[10px] text-red-400 mb-1 font-bold">❌ Cuando NO entrar — mercado bajista</p>
+                    <CandleChart candles={BAD_CANDLES}
+                      annotations={[{x:0,label:'ESPERA',color:'#ff4444',arrow:'down'},{x:4,label:'Sigue bajando',color:'#ff4444',arrow:'down'}]} />
+                    <p className="font-mono text-[9px] text-gray-500 mt-1">Velas rojas en cadena = no entres. Espera a que se estabilice.</p>
+                  </div>
+                  <div>
+                    <p className="font-mono text-[10px] text-yellow-400 mb-1 font-bold">📊 RSI — detecta el momento perfecto</p>
+                    <RSIChart values={[65,72,78,75,68,55,42,35,28,32,38,45,52,60,58,55]} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {block.type === 'intro' && (
             <div className="text-gray-200 text-lg leading-relaxed">{block.text}</div>
           )}

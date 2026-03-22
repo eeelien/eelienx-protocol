@@ -89,7 +89,7 @@ function PixelShip({ size = 1 }: { size?: number }) {
   ]
   return (
     <svg width={12*S} height={8*S} style={{ imageRendering:'pixelated', display:'block',
-      animation:'ship-float 1.8s ease infinite alternate', filter:'drop-shadow(0 0 8px #00ffff90)' }}>
+      animation:'ship-patrol 6s linear infinite', filter:'drop-shadow(0 0 8px #00ffff90)' }}>
       {pixels.map(([x,y,w,h,fill],i) => <rect key={i} x={x*S} y={y*S} width={w*S} height={h*S} fill={fill} />)}
     </svg>
   )
@@ -208,13 +208,33 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
         @keyframes ship-float { from { transform: translateX(-4px) translateY(-2px); } to { transform: translateX(4px) translateY(2px); } }
         @keyframes bill-fall  { 0% { transform: translateY(0) rotate(0deg); opacity:1; } 100% { transform: translateY(110vh) rotate(360deg); opacity:0; } }
       `}</style>
-      {/* Stars bg */}
-      <div className="fixed inset-0 pointer-events-none">
-        {Array.from({length:22}).map((_,i) => (
+      {/* Moving stars */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {Array.from({length:30}).map((_,i) => (
           <div key={i} className="absolute rounded-full bg-white"
-            style={{ width:2,height:2,left:`${(i*4.5)%100}%`,top:`${(i*6.3)%70}%`,opacity:0.2+(i%4)*0.1,animation:`blink-s ${1.5+i%3}s ${i%2*0.5}s infinite` }} />
+            style={{
+              width: i%5===0 ? 3 : 2, height: i%5===0 ? 3 : 2,
+              left:`${(i*3.7)%100}%`,
+              top: `-${(i%10)*5}%`,
+              opacity: 0.3+(i%4)*0.15,
+              animation:`star-fall ${4+i%6}s ${i*0.3}s linear infinite`,
+            }} />
         ))}
-        <style>{`@keyframes blink-s{0%,100%{opacity:.15}50%{opacity:.8}}`}</style>
+        {/* Shooting stars */}
+        {[0,1,2].map(i => (
+          <div key={`shoot-${i}`} className="absolute"
+            style={{
+              width:60, height:1,
+              background:'linear-gradient(90deg,rgba(255,255,255,0.8),transparent)',
+              top:`${20+i*25}%`, left:'-10%',
+              animation:`shoot ${3+i*2}s ${i*4}s linear infinite`,
+            }} />
+        ))}
+        <style>{`
+          @keyframes star-fall { 0%{transform:translateY(0);opacity:0} 10%{opacity:1} 90%{opacity:0.8} 100%{transform:translateY(110vh);opacity:0} }
+          @keyframes shoot { 0%{transform:translateX(0) rotate(-20deg);opacity:0} 5%{opacity:1} 30%{transform:translateX(120vw) rotate(-20deg);opacity:0} 100%{transform:translateX(120vw) rotate(-20deg);opacity:0} }
+          @keyframes ship-patrol { 0%{transform:translateX(-10px) translateY(0) rotate(-5deg)} 20%{transform:translateX(10px) translateY(-8px) rotate(5deg)} 40%{transform:translateX(-5px) translateY(-15px) rotate(0deg)} 60%{transform:translateX(15px) translateY(-5px) rotate(8deg)} 80%{transform:translateX(-10px) translateY(3px) rotate(-3deg)} 100%{transform:translateX(-10px) translateY(0) rotate(-5deg)} }
+        `}</style>
       </div>
 
       {/* Wallet + Balance row */}
@@ -410,12 +430,13 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 600); return () => clearInterval(t) }, [])
   return (
     <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
-      {/* Stars */}
-      <div className="fixed inset-0 pointer-events-none">
-        {Array.from({length:20}).map((_,i) => (
+      {/* Moving stars */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {Array.from({length:25}).map((_,i) => (
           <div key={i} className="absolute rounded-full bg-white"
-            style={{ width:2,height:2,left:`${(i*5.1)%100}%`,top:`${(i*6.7)%75}%`,opacity:0.15+(i%4)*0.1 }} />
+            style={{ width:i%5===0?3:2, height:i%5===0?3:2, left:`${(i*3.9)%100}%`, top:`-${(i%8)*5}%`, opacity:0.3+(i%4)*0.15, animation:`star-fall ${4+i%5}s ${i*0.35}s linear infinite` }} />
         ))}
+        <style>{`@keyframes star-fall{0%{transform:translateY(0);opacity:0}10%{opacity:1}90%{opacity:.8}100%{transform:translateY(110vh);opacity:0}}`}</style>
       </div>
 
       {/* Wallet badge */}
