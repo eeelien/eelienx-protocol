@@ -233,7 +233,7 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 550); return () => clearInterval(t) }, [])
 
   return (
-    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
+    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)', cursor: 'url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 20,20 12,15 4,20' fill='%235e72e4' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E") 12 2, auto' }}>
       <style>{`
         @keyframes alien-bob  { from { transform: translateY(0); } to { transform: translateY(-6px); } }
         @keyframes alien-jump { from { transform: translateY(0) rotate(-5deg); } to { transform: translateY(-18px) rotate(5deg); } }
@@ -241,12 +241,27 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
         @keyframes ship-float { from { transform: translateX(-4px) translateY(-2px); } to { transform: translateX(4px) translateY(2px); } }
         @keyframes bill-fall  { 0% { transform: translateY(0) rotate(0deg); opacity:1; } 100% { transform: translateY(110vh) rotate(360deg); opacity:0; } }
       `}</style>
-      {/* Warp stars – burst outward from center following the ship */}
+      {/* Universe background: static stars + warp burst from ship */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <style>{`
           @keyframes warp-star { 0%{opacity:0;transform:var(--t0)} 15%{opacity:1} 80%{opacity:0.6} 100%{opacity:0;transform:var(--t1)} }
           @keyframes ship-patrol { 0%{transform:translateX(-10px) translateY(0) rotate(-5deg)} 20%{transform:translateX(10px) translateY(-8px) rotate(5deg)} 40%{transform:translateX(-5px) translateY(-15px) rotate(0deg)} 60%{transform:translateX(15px) translateY(-5px) rotate(8deg)} 80%{transform:translateX(-10px) translateY(3px) rotate(-3deg)} 100%{transform:translateX(-10px) translateY(0) rotate(-5deg)} }
+          @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.9} }
+          @keyframes cursor-ship { }
         `}</style>
+        {/* Static background stars — full universe coverage */}
+        {Array.from({length:80}).map((_,i) => (
+          <div key={`bg-${i}`} style={{
+            position:'absolute',
+            left:`${(i*7.3+i*i*0.11)%100}%`,
+            top:`${(i*11.7+i*3.1)%100}%`,
+            width: i%9===0?3:i%4===0?2:1.2,
+            height: i%9===0?3:i%4===0?2:1.2,
+            borderRadius:'50%',
+            background: i%5===0?'rgba(180,200,255,0.9)':i%3===0?'rgba(255,255,220,0.7)':'rgba(200,220,255,0.6)',
+            animation:`twinkle ${3+i%4}s ${(i*0.4)%4}s ease-in-out infinite`,
+          }} />
+        ))}
         {Array.from({length:55}).map((_,i) => {
           const angle = (i/55)*360
           const rad   = (angle*Math.PI)/180
@@ -272,6 +287,12 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
         })}
       </div>
 
+      {/* Avatar badge top-left */}
+      <div className="fixed top-4 left-4 z-50" style={{filter:'drop-shadow(0 0 8px rgba(94,114,228,0.6))'}}>
+        <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(94,114,228,0.7)'}}>
+          <img src="/avatar.jpg" alt="39eliens" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}} />
+        </div>
+      </div>
       {/* Wallet + Balance row */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-safe pt-4">
         <div /> {/* spacer */}
@@ -312,8 +333,8 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
           <PixelShip size={3} />
         </div>
 
-        <h1 className="font-mono font-black text-5xl mb-1.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:3 }}>
-          eelie<span style={{color:'#fff'}}>n</span>X
+        <h1 className="font-mono font-black text-4xl mb-0.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:2 }}>
+          eelie<span style={{color:'#fff'}}>n</span>X <span style={{color:'rgba(255,255,255,0.5)',fontSize:'0.6em',letterSpacing:1}}>Protocol</span>
         </h1>
         <p className="font-mono text-xs tracking-widest mb-6" style={{color:'rgba(255,255,255,0.30)'}}>AGENT TRADING WORLD</p>
 
@@ -478,13 +499,28 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
   const [blink, setBlink] = useState(true)
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 600); return () => clearInterval(t) }, [])
   return (
-    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
-      {/* Warp stars – burst outward from center following the ship */}
+    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)', cursor: 'url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 20,20 12,15 4,20' fill='%235e72e4' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E") 12 2, auto' }}>
+      {/* Universe background: static stars + warp burst from ship */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <style>{`
           @keyframes warp-star { 0%{opacity:0;transform:var(--t0)} 15%{opacity:1} 80%{opacity:0.6} 100%{opacity:0;transform:var(--t1)} }
           @keyframes ship-patrol { 0%{transform:translateX(-10px) translateY(0) rotate(-5deg)} 20%{transform:translateX(10px) translateY(-8px) rotate(5deg)} 40%{transform:translateX(-5px) translateY(-15px) rotate(0deg)} 60%{transform:translateX(15px) translateY(-5px) rotate(8deg)} 80%{transform:translateX(-10px) translateY(3px) rotate(-3deg)} 100%{transform:translateX(-10px) translateY(0) rotate(-5deg)} }
+          @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.9} }
+          @keyframes cursor-ship { }
         `}</style>
+        {/* Static background stars — full universe coverage */}
+        {Array.from({length:80}).map((_,i) => (
+          <div key={`bg-${i}`} style={{
+            position:'absolute',
+            left:`${(i*7.3+i*i*0.11)%100}%`,
+            top:`${(i*11.7+i*3.1)%100}%`,
+            width: i%9===0?3:i%4===0?2:1.2,
+            height: i%9===0?3:i%4===0?2:1.2,
+            borderRadius:'50%',
+            background: i%5===0?'rgba(180,200,255,0.9)':i%3===0?'rgba(255,255,220,0.7)':'rgba(200,220,255,0.6)',
+            animation:`twinkle ${3+i%4}s ${(i*0.4)%4}s ease-in-out infinite`,
+          }} />
+        ))}
         {Array.from({length:55}).map((_,i) => {
           const angle = (i/55)*360
           const rad   = (angle*Math.PI)/180
@@ -510,6 +546,12 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
         })}
       </div>
 
+      {/* Avatar badge top-left */}
+      <div className="fixed top-4 left-4 z-50" style={{filter:'drop-shadow(0 0 8px rgba(94,114,228,0.6))'}}>
+        <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(94,114,228,0.7)'}}>
+          <img src="/avatar.jpg" alt="39eliens" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center top'}} />
+        </div>
+      </div>
       {/* Wallet badge */}
       <div className="relative z-10 flex justify-end px-5 pt-safe pt-4">
         {wallet.address ? (
@@ -531,13 +573,12 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
         <div style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
           <PixelShip size={3} />
         </div>
-        <h1 className="font-mono font-black text-4xl" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470' }}>
-          eelie<span style={{color:'#fff'}}>n</span>X
+        <h1 className="font-mono font-black text-4xl mb-0.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:2 }}>
+          eelie<span style={{color:'#fff'}}>n</span>X <span style={{color:'rgba(255,255,255,0.5)',fontSize:'0.6em',letterSpacing:1}}>Protocol</span>
         </h1>
-        <p className="font-mono text-base font-black text-white text-center px-2 mb-1">
-          eelienX Protocol conecta<br/>y <span style={{color:'#00ff88'}}>tu agente ejecuta por ti</span>
+        <p className="font-mono font-bold text-center px-4 leading-snug" style={{color:'#00ff88',fontSize:'0.85rem'}}>
+          El agente ejecuta por ti.<br/><span style={{color:'rgba(255,255,255,0.7)'}}>Solo conecta tu wallet y listo 🚀</span>
         </p>
-        <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.35)'}}>¿Cuál es tu estilo? 👽</p>
 
         {/* Agent live status */}
         <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{background:'rgba(0,255,136,0.06)',border:'1px solid rgba(0,255,136,0.20)'}}>
