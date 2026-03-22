@@ -43,6 +43,74 @@ function playSound(type: 'coin' | 'lose' | 'click' | 'execute') {
   } catch { /* blocked */ }
 }
 
+// ── PIXEL ART ALIEN ───────────────────────────────────────────────────────────
+function PixelAlien({ state = 'idle', size = 1 }: { state?: 'idle' | 'win' | 'lose'; size?: number }) {
+  const S = size * 4
+  const green = '#39ff14', dark = '#1a7a00', eye = '#000'
+  type Px = [number,number,number,number,string]
+  const base: Px[] = [
+    [3,0,1,2,dark],[8,0,1,2,dark],[2,1,1,1,green],[9,1,1,1,green],
+    [1,2,10,1,green],[0,3,12,5,green],
+    [1,4,2,2,eye],[9,4,2,2,eye],
+    [5,6,2,1,dark],
+    [1,8,10,3,green],[0,8,1,2,green],[11,8,1,2,green],
+    [0,10,2,1,dark],[10,10,2,1,dark],
+    [2,11,2,3,green],[8,11,2,3,green],
+    [1,13,2,1,dark],[9,13,2,1,dark],
+    [1,14,3,1,green],[8,14,3,1,green],
+  ]
+  const mouth: Px[] = state === 'win'
+    ? [[2,7,1,1,'#fff'],[3,7,5,1,'#fff'],[7,7,1,1,'#fff']]
+    : state === 'lose'
+    ? [[3,7,5,1,'#555'],[3,8,1,1,'#555'],[7,8,1,1,'#555']]
+    : [[2,7,1,1,'#0f0'],[3,7,5,1,'#0f0'],[7,7,1,1,'#0f0']]
+  const pixels = [...base, ...mouth]
+  const W = 12*S, H = 15*S
+  const anim = state === 'win' ? 'alien-jump 0.45s ease infinite alternate'
+             : state === 'lose' ? 'alien-sag 1.8s ease infinite alternate'
+             : 'alien-bob 2s ease infinite alternate'
+  return (
+    <svg width={W} height={H} style={{ imageRendering:'pixelated', display:'block', animation: anim }}>
+      {pixels.map(([x,y,w,h,fill],i) => <rect key={i} x={x*S} y={y*S} width={w*S} height={h*S} fill={fill} />)}
+    </svg>
+  )
+}
+
+// ── PIXEL SPACESHIP ───────────────────────────────────────────────────────────
+function PixelShip({ size = 1 }: { size?: number }) {
+  const S = size * 4
+  type Px = [number,number,number,number,string]
+  const pixels: Px[] = [
+    [4,0,4,2,'#7B2FFF'],[5,0,2,2,'#d0aaff'],
+    [2,2,8,3,'#00ffff'],[0,3,12,2,'#00ffff'],[1,5,10,1,'#00ffff'],
+    [0,4,2,3,'#0099cc'],[10,4,2,3,'#0099cc'],
+    [3,6,2,2,'#f5a623'],[7,6,2,2,'#f5a623'],
+    [4,7,1,1,'#fff'],[8,7,1,1,'#fff'],
+  ]
+  return (
+    <svg width={12*S} height={8*S} style={{ imageRendering:'pixelated', display:'block',
+      animation:'ship-float 1.8s ease infinite alternate', filter:'drop-shadow(0 0 8px #00ffff90)' }}>
+      {pixels.map(([x,y,w,h,fill],i) => <rect key={i} x={x*S} y={y*S} width={w*S} height={h*S} fill={fill} />)}
+    </svg>
+  )
+}
+
+// ── MONEY BURST (win) ─────────────────────────────────────────────────────────
+function MoneyBurst() {
+  const bills = ['💵','💰','💸','🤑','💵','💸','💰','🤑']
+  return (
+    <div style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:0 }}>
+      {bills.map((b,i) => (
+        <div key={i} style={{
+          position:'absolute', left:`${8+i*11}%`, top:'-5%',
+          fontSize:`${18+(i%3)*10}px`,
+          animation:`bill-fall ${0.9+i*0.12}s ${i*0.08}s linear infinite`,
+        }}>{b}</div>
+      ))}
+    </div>
+  )
+}
+
 // ── Mini SVG chart ─────────────────────────────────────────────────────────────
 function MiniChart({ color, points: pts = [42,38,45,40,48,44,52,47,55,50,58,53,62,57,61] }: { color: string; points?: number[] }) {
   const h = 48; const w = 160
@@ -133,6 +201,13 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
 
   return (
     <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
+      <style>{`
+        @keyframes alien-bob  { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+        @keyframes alien-jump { from { transform: translateY(0) rotate(-5deg); } to { transform: translateY(-18px) rotate(5deg); } }
+        @keyframes alien-sag  { from { transform: rotate(-3deg) translateY(0); } to { transform: rotate(3deg) translateY(4px); } }
+        @keyframes ship-float { from { transform: translateX(-4px) translateY(-2px); } to { transform: translateX(4px) translateY(2px); } }
+        @keyframes bill-fall  { 0% { transform: translateY(0) rotate(0deg); opacity:1; } 100% { transform: translateY(110vh) rotate(360deg); opacity:0; } }
+      `}</style>
       {/* Stars bg */}
       <div className="fixed inset-0 pointer-events-none">
         {Array.from({length:22}).map((_,i) => (
@@ -156,16 +231,23 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
 
       {/* Hero */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center" style={{animation:'popin 0.6s ease'}}>
-        <div className="text-7xl mb-5" style={{filter:'drop-shadow(0 0 24px #5e72e460)'}}>🤖</div>
+        {/* Pixel alien mascot */}
+        <div className="mb-3" style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
+          <PixelAlien state="idle" size={2} />
+        </div>
+
         <h1 className="font-mono font-black text-5xl mb-1.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:3 }}>
           eelie<span style={{color:'#fff'}}>n</span>X
         </h1>
-        <p className="font-mono text-xs tracking-widest mb-8" style={{color:'rgba(255,255,255,0.30)'}}>AGENT TRADING WORLD</p>
+        <p className="font-mono text-xs tracking-widest mb-6" style={{color:'rgba(255,255,255,0.30)'}}>AGENT TRADING WORLD</p>
 
-        {/* Blink text */}
-        <p className="font-mono text-sm mb-8" style={{color: blink ? '#00ff88' : 'transparent', transition:'color 0.05s'}}>
-          ▶ ELIGE TU MODO ◀
-        </p>
+        {/* Ship guide */}
+        <div className="flex items-center gap-3 mb-4">
+          <PixelShip size={1} />
+          <p className="font-mono text-sm" style={{color: blink ? '#00ffff' : 'rgba(0,255,255,0.3)', transition:'color 0.1s'}}>
+            ▶ ELIGE TU MODO ◀
+          </p>
+        </div>
 
         {/* Buttons */}
         <div className="flex flex-col gap-4 w-full max-w-sm">
@@ -522,12 +604,12 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay:()=>
   return (
     <div className="flex flex-col min-h-dvh relative overflow-hidden"
       style={{background: result.win ? 'linear-gradient(180deg,#0d0d1a,#0a2a0d)' : 'linear-gradient(180deg,#0d0d1a,#2a0a0a)'}}>
-      {result.win && <MoneyRain />}
+      {result.win && <MoneyBurst />}
 
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center"
         style={{opacity: show?1:0, transition:'opacity 0.3s', animation: show?'popin 0.5s ease':'none'}}>
-        <div className="text-8xl mb-5" style={{display:'inline-block', animation: result.win?'wobble 0.9s ease infinite':'shake 0.5s ease infinite'}}>
-          {result.win ? '🤩' : '😭'}
+        <div className="mb-4">
+          <PixelAlien state={result.win ? 'win' : 'lose'} size={3} />
         </div>
 
         <p className="font-mono font-black mb-1 tracking-widest" style={{fontSize:'clamp(22px,7vw,36px)', color:c}}>
