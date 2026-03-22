@@ -592,7 +592,7 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
           eelie<span style={{color:'#fff'}}>n</span>X <span style={{color:'rgba(255,255,255,0.5)',fontSize:'0.6em',letterSpacing:1}}>Protocol</span>
         </h1>
         <p className="font-mono font-bold text-center px-4 leading-snug" style={{color:'#00ff88',fontSize:'0.85rem'}}>
-          El agente ejecuta por ti.<br/><span style={{color:'rgba(255,255,255,0.7)'}}>Solo conecta tu wallet y listo 🚀</span>
+          El agente que ejecuta por tí.<br/><span style={{color:'rgba(255,255,255,0.7)'}}>Sólo conecta tu wallet y listo!! 🚀</span>
         </p>
 
         {/* Agent live status */}
