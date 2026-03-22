@@ -195,7 +195,7 @@ function useSession() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── HOME ─────────────────────────────────────────────────────────────────────
-function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy') => void; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean }) {
+function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual'|'copy') => void; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean; wallet: ReturnType<typeof useWallet> }) {
   const [blink, setBlink] = useState(true)
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 550); return () => clearInterval(t) }, [])
 
@@ -217,17 +217,38 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
         <style>{`@keyframes blink-s{0%,100%{opacity:.15}50%{opacity:.8}}`}</style>
       </div>
 
-      {/* Balance badge */}
-      {loggedIn && balance && (
-        <div className="relative z-10 flex justify-end px-5 pt-safe pt-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border" style={{ background:'rgba(0,255,136,0.08)',borderColor:'rgba(0,255,136,0.25)' }}>
-            <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-            <span className="font-mono text-xs" style={{color:'#00ff88'}}>
-              {balance.eth ? `${balance.eth.toFixed(4)} ETH` : ''}{balance.mxn ? ` · $${balance.mxn.toFixed(0)} MXN` : ''}
-            </span>
-          </div>
+      {/* Wallet + Balance row */}
+      <div className="relative z-10 flex items-center justify-between px-5 pt-safe pt-4">
+        <div /> {/* spacer */}
+        <div className="flex items-center gap-2">
+          {loggedIn && balance && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border" style={{ background:'rgba(0,255,136,0.08)',borderColor:'rgba(0,255,136,0.25)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+              <span className="font-mono text-[10px]" style={{color:'#00ff88'}}>
+                {balance.mxn ? `$${balance.mxn.toFixed(0)} MXN` : 'Bitso ✓'}
+              </span>
+            </div>
+          )}
+          {wallet.address ? (
+            <button onClick={wallet.disconnect}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border active:scale-95 transition-all"
+              style={{ background:'rgba(245,166,35,0.08)', borderColor:'rgba(245,166,35,0.30)' }}>
+              <span className="w-1.5 h-1.5 rounded-full bg-[#f5a623] animate-pulse" />
+              <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>
+                🦊 {wallet.short}{wallet.ethBalance ? ` · ${wallet.ethBalance} ETH` : ''}
+              </span>
+            </button>
+          ) : (
+            <button onClick={wallet.connect} disabled={wallet.connecting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border active:scale-95 transition-all disabled:opacity-50"
+              style={{ background:'rgba(245,166,35,0.06)', borderColor:'rgba(245,166,35,0.25)' }}>
+              <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>
+                {wallet.connecting ? '🦊 Conectando…' : '🦊 Conectar Wallet'}
+              </span>
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Hero */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center" style={{animation:'popin 0.6s ease'}}>
@@ -272,9 +293,9 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
             <span className="block font-normal text-xs mt-0.5 opacity-55">Aprende a analizar gráficas como los pros</span>
           </a>
 
-          {!loggedIn && (
-            <a href="/login" className="text-center font-mono text-xs py-3" style={{color:'rgba(255,255,255,0.25)'}}>
-              → Conectar cuenta Bitso para trades reales
+          {!loggedIn && !wallet.address && (
+            <a href="/login" className="text-center font-mono text-xs py-2" style={{color:'rgba(255,255,255,0.20)'}}>
+              → Conectar cuenta Bitso para trades reales en MXN
             </a>
           )}
         </div>
@@ -285,6 +306,71 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
       </p>
     </div>
   )
+}
+
+
+// ── METAMASK WALLET HOOK ───────────────────────────────────────────────────────
+function useWallet() {
+  const [address, setAddress] = useState<string | null>(null)
+  const [ethBalance, setEthBalance] = useState<string | null>(null)
+  const [connecting, setConnecting] = useState(false)
+
+  useEffect(() => {
+    // Restore from localStorage
+    const saved = localStorage.getItem('eelienx_wallet')
+    if (saved) {
+      setAddress(saved)
+      fetchBalance(saved)
+    }
+  }, [])
+
+  const fetchBalance = async (addr: string) => {
+    try {
+      // Use public Ethereum RPC to get ETH balance
+      const res = await fetch('https://cloudflare-eth.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc:'2.0', method:'eth_getBalance', params:[addr,'latest'], id:1 }),
+      })
+      const d = await res.json()
+      if (d.result) {
+        const wei = parseInt(d.result, 16)
+        const eth = (wei / 1e18).toFixed(4)
+        setEthBalance(eth)
+      }
+    } catch { /* silent */ }
+  }
+
+  const connect = async () => {
+    if (typeof window === 'undefined') return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const eth = (window as any).ethereum
+    if (!eth) {
+      alert('🦊 Instala MetaMask para conectar tu wallet\nhttps://metamask.io')
+      return
+    }
+    setConnecting(true)
+    try {
+      const accounts: string[] = await eth.request({ method: 'eth_requestAccounts' })
+      if (accounts[0]) {
+        setAddress(accounts[0])
+        localStorage.setItem('eelienx_wallet', accounts[0])
+        fetchBalance(accounts[0])
+        playSound('coin')
+      }
+    } catch { /* user rejected */ }
+    finally { setConnecting(false) }
+  }
+
+  const disconnect = () => {
+    setAddress(null)
+    setEthBalance(null)
+    localStorage.removeItem('eelienx_wallet')
+  }
+
+  const short = address ? `${address.slice(0,6)}…${address.slice(-4)}` : null
+
+  return { address, ethBalance, connecting, connect, disconnect, short }
 }
 
 // ── PRICE HOOK ─────────────────────────────────────────────────────────────────
@@ -758,6 +844,7 @@ export default function Game2() {
   const [result, setResult] = useState<TradeResult | null>(null)
   const { balance, loggedIn } = useSession()
   const { hist, addTrade, total } = useHistory()
+  const wallet = useWallet()
 
   async function executeTrade(action: string) {
     setTradeAction(action)
@@ -802,7 +889,7 @@ export default function Game2() {
 
   if (screen === 'home')      return (
     <>
-      <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} />
+      <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} wallet={wallet} />
       <div style={{position:'fixed',bottom:'80px',left:0,right:0,zIndex:20}}><HistoryPanel hist={hist} total={total} /></div>
     </>
   )
