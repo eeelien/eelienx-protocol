@@ -1008,6 +1008,9 @@ function MultiAgentPanel() {
 
 function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>void; onBack:()=>void; loggedIn:boolean }) {
   const [action, setAction] = useState<'buy'|'sell'|null>(null)
+  const [amount, setAmount] = useState('500')
+  const [stopLoss, setStopLoss] = useState('5')
+  const [takeProfit, setTakeProfit] = useState('10')
   const livePrice = useLivePrice()
   const tip = buildTip(livePrice)
 
@@ -1022,7 +1025,7 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
         </span>
       </div>
 
-      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto pb-28">
         {/* Price + mini chart */}
         <div className="rounded-2xl border p-4" style={{background:'rgba(255,255,255,0.03)',borderColor:'rgba(255,255,255,0.08)'}}>
           <div className="flex items-center justify-between mb-3">
@@ -1060,6 +1063,50 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
         {/* Multi-agent collaboration toggle */}
         <MultiAgentPanel />
 
+        {/* Amount selector */}
+        <div className="rounded-2xl border p-4" style={{background:'rgba(255,255,255,0.03)',borderColor:'rgba(255,255,255,0.08)'}}>
+          <p className="font-mono text-xs font-bold text-white mb-3">💰 ¿Cuánto quieres apostar?</p>
+          <div className="grid grid-cols-4 gap-2 mb-2">
+            {['200','500','1000','2000'].map(v => (
+              <button key={v} onClick={() => setAmount(v)}
+                className="rounded-xl py-2 font-mono text-xs font-bold transition-all active:scale-95"
+                style={{background: amount===v ? '#00ff88' : 'rgba(255,255,255,0.06)', color: amount===v ? '#000' : 'rgba(255,255,255,0.45)'}}>
+                ${v}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs" style={{color:'rgba(255,255,255,0.40)'}}>MXN</span>
+            <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
+              className="flex-1 rounded-xl px-3 py-2 font-mono text-sm text-white outline-none border"
+              style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.10)'}} />
+          </div>
+        </div>
+
+        {/* Stop Loss / Take Profit */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border p-3" style={{background:'rgba(255,68,68,0.04)',borderColor:'rgba(255,68,68,0.15)'}}>
+            <p className="font-mono text-[9px] font-bold mb-1.5" style={{color:'#ff4444'}}>🛡️ Stop Loss</p>
+            <div className="flex items-center gap-1">
+              <input type="number" value={stopLoss} onChange={e => setStopLoss(e.target.value)}
+                className="w-full rounded-lg px-2 py-1.5 font-mono text-sm text-white outline-none border"
+                style={{background:'rgba(255,255,255,0.04)',borderColor:'rgba(255,68,68,0.20)'}} />
+              <span className="font-mono text-xs" style={{color:'#ff4444'}}>%</span>
+            </div>
+            <p className="font-mono text-[8px] mt-1" style={{color:'rgba(255,255,255,0.25)'}}>pérdida máxima</p>
+          </div>
+          <div className="rounded-xl border p-3" style={{background:'rgba(0,255,136,0.04)',borderColor:'rgba(0,255,136,0.15)'}}>
+            <p className="font-mono text-[9px] font-bold mb-1.5" style={{color:'#00ff88'}}>🎯 Take Profit</p>
+            <div className="flex items-center gap-1">
+              <input type="number" value={takeProfit} onChange={e => setTakeProfit(e.target.value)}
+                className="w-full rounded-lg px-2 py-1.5 font-mono text-sm text-white outline-none border"
+                style={{background:'rgba(255,255,255,0.04)',borderColor:'rgba(0,255,136,0.20)'}} />
+              <span className="font-mono text-xs" style={{color:'#00ff88'}}>%</span>
+            </div>
+            <p className="font-mono text-[8px] mt-1" style={{color:'rgba(255,255,255,0.25)'}}>ganancia objetivo</p>
+          </div>
+        </div>
+
         {/* BUY / SELL */}
         <div className="grid grid-cols-2 gap-3">
           {(['buy','sell'] as const).map(a => (
@@ -1086,7 +1133,7 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
             💰 Agente premium<br/><span style={{fontSize:'9px',opacity:0.7}}>0.01 USDC via x402</span>
           </button>
           <button disabled={!action}
-            onClick={() => action && (playSound('execute'), onExecute(action.toUpperCase()))}
+            onClick={() => action && (playSound('execute'), onExecute(`${action.toUpperCase()}·${amount}MXN·SL${stopLoss}%·TP${takeProfit}%`))}
             className="rounded-xl py-3 font-mono font-black text-sm active:scale-95 transition-all disabled:opacity-25"
             style={{
               background: action ? 'linear-gradient(135deg,#5e72e4,#00ff88)' : 'rgba(255,255,255,0.05)',
