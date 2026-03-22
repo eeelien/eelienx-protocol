@@ -198,17 +198,39 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
   )
 }
 
+// ── PRICE HOOK ─────────────────────────────────────────────────────────────────
+interface PriceData { last: number; change24: number; high: number; low: number; ok: boolean }
+
+function useLivePrice() {
+  const [price, setPrice] = useState<PriceData | null>(null)
+  useEffect(() => {
+    fetch('/api/price').then(r => r.json()).then(setPrice).catch(() => null)
+    const iv = setInterval(() => {
+      fetch('/api/price').then(r => r.json()).then(setPrice).catch(() => null)
+    }, 30000)
+    return () => clearInterval(iv)
+  }, [])
+  return price
+}
+
+function buildTip(p: PriceData | null) {
+  if (!p) return { msg: 'Analizando mercado en tiempo real...', risk: 'BAJO', riskC: '#00ff88' }
+  const chg = p.change24
+  const fmt  = (v: number) => v.toLocaleString('es-MX', { maximumFractionDigits: 0 })
+  const pct  = Math.abs(chg).toFixed(1)
+  if (chg <= -3)   return { msg: `ETH bajó ${pct}% en 24h — precio actual $${fmt(p.last)} MXN. Señal de compra detectada.`, risk: 'BAJO',  riskC: '#00ff88' }
+  if (chg <= -1)   return { msg: `ETH cayó ${pct}% hoy, ahora en $${fmt(p.last)} MXN. RSI en zona de acumulación.`, risk: 'BAJO',  riskC: '#00ff88' }
+  if (chg >= 5)    return { msg: `ETH subió ${pct}% en 24h — precio $${fmt(p.last)} MXN. Considera toma parcial de ganancias.`, risk: 'MEDIO', riskC: '#f5a623' }
+  if (chg >= 2)    return { msg: `ETH en $${fmt(p.last)} MXN, +${pct}% hoy. Momentum alcista activo.`, risk: 'MEDIO', riskC: '#f5a623' }
+  return { msg: `ETH en $${fmt(p.last)} MXN, movimiento de ${chg > 0 ? '+' : ''}${pct}% en 24h. Mercado lateral — agente en espera.`, risk: 'ALTO', riskC: '#f5a623' }
+}
+
 // ── MANUAL ────────────────────────────────────────────────────────────────────
-const TIPS = [
-  { msg: 'ETH bajó 2.1% en la última hora — detecté un punto de entrada favorable.', risk:'BAJO',  riskC:'#00ff88' },
-  { msg: 'RSI en zona de sobreventa + volumen alto. Hay acumulación institucional.',  risk:'MEDIO', riskC:'#f5a623' },
-  { msg: 'Volatilidad alta detectada — stop loss activado automáticamente.',          risk:'ALTO',  riskC:'#ff4444' },
-  { msg: 'Precio cerca de resistencia clave. Considera toma parcial de ganancias.',   risk:'MEDIO', riskC:'#f5a623' },
-]
 
 function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>void; onBack:()=>void; loggedIn:boolean }) {
   const [action, setAction] = useState<'buy'|'sell'|null>(null)
-  const tip = useRef(TIPS[Math.floor(Math.random()*TIPS.length)]).current
+  const livePrice = useLivePrice()
+  const tip = buildTip(livePrice)
 
   return (
     <div className="flex flex-col min-h-dvh" style={{background:'#0d0d1a'}}>
@@ -442,6 +464,7 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay:()=>
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Game2() {
   const [screen, setScreen] = useState<Screen>('home')
+  const livePrice = useLivePrice()
   const [tradeAction, setTradeAction] = useState('')
   const [result, setResult] = useState<TradeResult | null>(null)
   const { balance, loggedIn } = useSession()
