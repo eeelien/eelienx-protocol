@@ -4,7 +4,7 @@
   "description": "Autonomous trading agent for Ethereum/EVM markets. Analyzes market conditions, executes trades via copy trading or independent strategies, and manages risk autonomously.",
   "agent_id": "eelienx-protocol-agent-v1",
   "operator_wallet": "0x39EL000000000000000000000000000000000000",
-  "erc8004_identity": "PENDING_REGISTRATION",
+  "erc8004_identity": "0x1b4f0d3e93a78de4cf2b72201af1e9518b0a7a929d61091438c7f06bfa789afc",
   "supported_tools": [
     "market_analysis",
     "trade_execution",
@@ -57,7 +57,7 @@
   "safeguards": [
     "Risk detection cancels trade (20% of trades rejected as high risk)",
     "Max trade size enforced server-side",
-    "Encrypted API keys — never stored in plaintext",
+    "Encrypted API keys \u2014 never stored in plaintext",
     "JWT session validation on all authenticated routes",
     "Stop-loss logic in autonomous mode"
   ],
@@ -67,5 +67,8 @@
     "autonomous_trading_agent",
     "protocol_labs_let_agent_cook",
     "base_agent_service_x402"
-  ]
+  ],
+  "erc8004_explorer": "https://basescan.org/tx/0x1b4f0d3e93a78de4cf2b72201af1e9518b0a7a929d61091438c7f06bfa789afc",
+  "synthesis_participant_id": "6a670996a69f40ba8c8ae3a777c35922",
+  "synthesis_team_id": "91b1d786502a4b49ba120453f533bedf"
 }
