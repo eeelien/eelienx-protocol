@@ -692,7 +692,7 @@ function HodlScreen({ onExecute, onBack }: { onExecute: (a:string)=>void; onBack
         <span className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>LARGO PLAZO</span>
       </div>
 
-      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto pb-28">
         <div className="text-center py-2">
           <p className="font-mono text-sm font-black text-white mb-0.5">Los mejores HODLers del mundo</p>
           <p className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.30)'}}>El agente copia sus portafolios automáticamente · Solo pide tu permiso una vez</p>
@@ -744,14 +744,18 @@ function HodlScreen({ onExecute, onBack }: { onExecute: (a:string)=>void; onBack
               ))}
             </div>
             {/* Permission confirm */}
-            <button onClick={() => setConfirm(c => !c)}
-              className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 border active:scale-95 transition-all"
-              style={{borderColor: confirm ? '#00ff88' : 'rgba(255,255,255,0.12)', background: confirm ? 'rgba(0,255,136,0.08)' : 'transparent'}}>
-              <span className="font-mono text-sm">{confirm ? '✅' : '⬜'}</span>
-              <span className="font-mono text-[10px] text-left" style={{color: confirm ? '#00ff88' : 'rgba(255,255,255,0.45)'}}>
-                Autorizo al agente a ejecutar ${amount} MXN/mes en este portafolio
+            <div
+              onClick={() => setConfirm(c => !c)}
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-4 border cursor-pointer"
+              style={{borderColor: confirm ? '#00ff88' : 'rgba(255,255,255,0.18)', background: confirm ? 'rgba(0,255,136,0.10)' : 'rgba(255,255,255,0.03)', minHeight:60}}>
+              <div className="flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center"
+                style={{borderColor: confirm ? '#00ff88' : 'rgba(255,255,255,0.30)', background: confirm ? '#00ff88' : 'transparent'}}>
+                {confirm && <span style={{color:'#000',fontSize:14,lineHeight:1,fontWeight:900}}>✓</span>}
+              </div>
+              <span className="font-mono text-xs text-left leading-snug" style={{color: confirm ? '#00ff88' : 'rgba(255,255,255,0.55)'}}>
+                Autorizo al agente a ejecutar <span style={{color:confirm?'#fff':'rgba(255,255,255,0.9)',fontWeight:900}}>${'{'}amount{'}'} MXN/mes</span> en este portafolio
               </span>
-            </button>
+            </div>
           </div>
         )}
       </div>
@@ -834,7 +838,7 @@ function StocksScreen({ onExecute, onBack }: { onExecute: (a:string)=>void; onBa
         <span className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.25)'}}>LARGO PLAZO</span>
       </div>
 
-      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto pb-28">
         <div className="text-center py-2">
           <p className="font-mono text-sm font-black text-white mb-0.5">Los mejores inversores del mundo</p>
           <p className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.30)'}}>El agente copia sus posiciones · Solo pide permiso para tomar el dinero y ejecutar</p>
@@ -881,14 +885,18 @@ function StocksScreen({ onExecute, onBack }: { onExecute: (a:string)=>void; onBa
                 </button>
               ))}
             </div>
-            <button onClick={() => setConfirm(c => !c)}
-              className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 border active:scale-95 transition-all"
-              style={{borderColor: confirm ? investor.color : 'rgba(255,255,255,0.12)', background: confirm ? `${investor.color}12` : 'transparent'}}>
-              <span className="font-mono text-sm">{confirm ? '✅' : '⬜'}</span>
-              <span className="font-mono text-[10px] text-left" style={{color: confirm ? investor.color : 'rgba(255,255,255,0.45)'}}>
-                Autorizo al agente a invertir ${amount} MXN/mes en este portafolio
+            <div
+              onClick={() => setConfirm(c => !c)}
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-4 border cursor-pointer"
+              style={{borderColor: confirm ? investor.color : 'rgba(255,255,255,0.18)', background: confirm ? `${investor.color}15` : 'rgba(255,255,255,0.03)', minHeight:60}}>
+              <div className="flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center"
+                style={{borderColor: confirm ? investor.color : 'rgba(255,255,255,0.30)', background: confirm ? investor.color : 'transparent'}}>
+                {confirm && <span style={{color:'#000',fontSize:14,lineHeight:1,fontWeight:900}}>✓</span>}
+              </div>
+              <span className="font-mono text-xs text-left leading-snug" style={{color: confirm ? investor.color : 'rgba(255,255,255,0.55)'}}>
+                Autorizo al agente a invertir <span style={{color:confirm?'#fff':'rgba(255,255,255,0.9)',fontWeight:900}}>${'{'}amount{'}'} MXN/mes</span> en este portafolio
               </span>
-            </button>
+            </div>
           </div>
         )}
       </div>
