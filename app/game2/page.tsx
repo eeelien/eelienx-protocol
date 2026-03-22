@@ -198,7 +198,7 @@ function MoneyRain() {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Screen = 'home' | 'path' | 'manual' | 'copy' | 'hodl' | 'hodlscreen' | 'stocks' | 'executing' | 'result'
+type Screen = 'home' | 'path' | 'plans' | 'command' | 'manual' | 'copy' | 'hodl' | 'hodlscreen' | 'stocks' | 'executing' | 'result'
 interface TradeResult { profit: number; action: string; message: string; win: boolean; real?: boolean }
 
 // ── Session + Balance hook ────────────────────────────────────────────────────
@@ -228,7 +228,7 @@ function useSession() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── HOME ─────────────────────────────────────────────────────────────────────
-function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual'|'copy') => void; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean; wallet: ReturnType<typeof useWallet> }) {
+function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual'|'copy'|'plans') => void; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean; wallet: ReturnType<typeof useWallet> }) {
   const [blink, setBlink] = useState(true)
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 550); return () => clearInterval(t) }, [])
 
@@ -386,6 +386,12 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
               <span className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.35)'}}>Aprende</span>
             </a>
           </div>
+          {/* Plans button */}
+          <button onClick={() => { playSound('click'); onMode('plans') }}
+            className="w-full py-3 rounded-2xl border font-mono text-xs active:scale-95 transition-all"
+            style={{borderColor:'rgba(0,255,136,0.20)',color:'rgba(255,255,255,0.50)',background:'transparent'}}>
+            💳 Ver planes · Free / $99 Pro / $299 Autopilot
+          </button>
           {!loggedIn && !wallet.address && (
             <a href="/login" className="text-center font-mono text-xs py-1" style={{color:'rgba(255,255,255,0.18)'}}>
               → Conectar cuenta Bitso para trades reales
@@ -505,7 +511,7 @@ function buildTip(p: PriceData | null) {
 
 // ── PATH SELECTOR ─────────────────────────────────────────────────────────────
 function PathScreen({ onPath, wallet, balance, loggedIn }: {
-  onPath: (p: 'quick'|'long'|'manual') => void
+  onPath: (p: 'quick'|'long'|'manual'|'plans') => void
   wallet: ReturnType<typeof useWallet>; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean
 }) {
   const [blink, setBlink] = useState(true)
@@ -1339,12 +1345,155 @@ function HistoryPanel({ hist, total }: { hist:{profit:number;win:boolean;action:
   )
 }
 
+// ── PLANS SCREEN ─────────────────────────────────────────────────────────────
+const PLANS_DATA = [
+  {
+    id: 'free', label: 'Gratis', price: '$0', color: '#5e72e4', emoji: '🛸',
+    features: ['✅ Precios ETH/BTC/SOL en tiempo real','✅ Academia completa con gráficas','✅ Copy Trading (modo demo)','✅ Ver balance de wallet (solo lectura)','❌ Trades reales','❌ Comandos al agente'],
+    cta: 'Empezar gratis',
+  },
+  {
+    id: 'pro', label: 'Agente Pro', price: '$99 USDC', color: '#f5a623', emoji: '⚡', badge: 'POPULAR',
+    features: ['✅ Todo lo de Gratis','✅ Trades reales en Bitso (ETH/MXN)','✅ Comandos: "Ponle $50 a ETH"','✅ Swap: "Cambia mi BTC a ETH"','✅ Alertas RSI/MACD push','✅ Multi-agente (Vitalik + CZ)','❌ Trades programados / autopilot'],
+    cta: 'Activar Pro con USDC',
+  },
+  {
+    id: 'premium', label: 'Full Autopilot', price: '$299 USDC', color: '#00ff88', emoji: '🚀',
+    features: ['✅ Todo lo de Agente Pro','✅ Trades programados: "El lunes a las 9am…"','✅ Wallet fría USDC sin cuenta Bitso','✅ Autopilot: el agente opera X días solo','✅ "Tengo 0.1 ETH, cámbiamelo a SOL"','✅ Gestión de portafolio autónoma 24/7'],
+    cta: 'Activar Full Autopilot',
+  },
+]
+
+function PlansScreen({ onBack, onSelectPlan }: { onBack:()=>void; onSelectPlan:(p:string)=>void }) {
+  const [selected, setSelected] = useState<string|null>(null)
+  return (
+    <div className="flex flex-col min-h-dvh pb-safe" style={{background:'linear-gradient(180deg,#0d0d1a 0%,#0d1228 55%,#0d1a14 100%)'}}>
+      <div className="relative z-10 flex items-center justify-between px-5 pt-safe pt-4 mb-3">
+        <button onClick={onBack} className="font-mono text-xs active:opacity-60" style={{color:'#555'}}>← VOLVER</button>
+        <span className="font-mono text-xs font-bold" style={{color:'#5e72e4'}}>eelienX Protocol</span>
+        <div />
+      </div>
+      <div className="relative z-10 text-center px-5 mb-3">
+        <h2 className="font-mono font-black text-2xl text-white mb-1">Elige tu plan 💳</h2>
+        <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.4)'}}>Paga con USDC · actívate en segundos</p>
+      </div>
+      <div className="relative z-10 flex flex-col gap-3 px-4 overflow-y-auto pb-8">
+        {PLANS_DATA.map(plan => (
+          <div key={plan.id}
+            onClick={() => { setSelected(plan.id); playSound('click') }}
+            className="w-full text-left rounded-2xl border-2 p-4 active:scale-95 transition-all cursor-pointer"
+            style={{
+              borderColor: selected===plan.id ? plan.color : 'rgba(255,255,255,0.10)',
+              background: 'rgba(255,255,255,0.02)',
+              boxShadow: selected===plan.id ? `0 0 24px ${plan.color}30` : 'none',
+            }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{plan.emoji}</span>
+                <span className="font-mono font-black text-base" style={{color:plan.color}}>{plan.label}</span>
+                {plan.badge && <span className="font-mono text-[8px] px-1.5 py-0.5 rounded-full font-black" style={{background:plan.color,color:'#000'}}>{plan.badge}</span>}
+              </div>
+              <span className="font-mono font-black text-sm" style={{color:plan.color}}>{plan.price}</span>
+            </div>
+            <div className="space-y-0.5 mb-2">
+              {plan.features.map((f,i) => (
+                <p key={i} className="font-mono text-[10px]" style={{color:f.startsWith('✅')?'rgba(255,255,255,0.70)':'rgba(255,255,255,0.22)'}}>{f}</p>
+              ))}
+            </div>
+            {selected===plan.id && (
+              <button onClick={e => { e.stopPropagation(); onSelectPlan(plan.id) }}
+                className="w-full py-2.5 rounded-xl font-mono font-black text-sm active:scale-95 transition-all mt-1"
+                style={{background:plan.color,color:plan.id==='free'?'#fff':'#000'}}>
+                {plan.cta}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── COMMAND SCREEN (Pro / Premium) ────────────────────────────────────────────
+function CommandScreen({ onBack, onExecute, plan }: { onBack:()=>void; onExecute:(a:string)=>void; plan:string }) {
+  const [input, setInput] = useState('')
+  const [scheduled, setScheduled] = useState(false)
+  const [schedDate, setSchedDate] = useState('')
+  const isPremium = plan === 'premium'
+
+  const EXAMPLES = isPremium
+    ? ['Ponle $50 a ETH ahora','El lunes compra $30 de BTC','Tengo 0.1 ETH, cámbiamelo a SOL','DCA $20 diarios en ETH por 7 días','Si ETH baja a $60k MXN, compra $100']
+    : ['Ponle $50 a ETH','Compra $30 de BTC','Tengo 0.05 BTC, cámbiamelo a ETH','Vende el 50% de mi ETH']
+
+  return (
+    <div className="flex flex-col min-h-dvh pb-safe" style={{background:'linear-gradient(180deg,#0d0d1a 0%,#0d1228 60%,#0d1a14 100%)'}}>
+      <div className="relative z-10 flex items-center justify-between px-5 pt-safe pt-4 mb-2">
+        <button onClick={onBack} className="font-mono text-xs active:opacity-60" style={{color:'#555'}}>← VOLVER</button>
+        <span className="font-mono text-[9px] px-2 py-1 rounded-full font-bold" style={{background:isPremium?'rgba(0,255,136,0.12)':'rgba(245,166,35,0.12)',color:isPremium?'#00ff88':'#f5a623'}}>
+          {isPremium?'🚀 Full Autopilot':'⚡ Agente Pro'}
+        </span>
+        <div />
+      </div>
+      <div className="relative z-10 px-5 flex flex-col gap-4 flex-1">
+        <div className="text-center pt-1">
+          <h2 className="font-mono font-black text-xl text-white">Dale órdenes al agente</h2>
+          <p className="font-mono text-xs mt-0.5" style={{color:'rgba(255,255,255,0.35)'}}>Escribe en español — él entiende y ejecuta</p>
+        </div>
+        <textarea value={input} onChange={e => setInput(e.target.value)}
+          placeholder="Ej: Ponle $50 a ETH ahora..."
+          rows={3}
+          className="w-full rounded-xl p-3 font-mono text-sm text-white resize-none outline-none border"
+          style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(255,255,255,0.12)'}} />
+        {isPremium && (
+          <div>
+            <button onClick={() => setScheduled(s => !s)}
+              className="flex items-center gap-2 font-mono text-xs"
+              style={{color:scheduled?'#00ff88':'rgba(255,255,255,0.40)'}}>
+              <span className="w-3 h-3 rounded border inline-flex items-center justify-center" style={{background:scheduled?'#00ff88':'transparent',borderColor:scheduled?'#00ff88':'rgba(255,255,255,0.30)'}}>
+                {scheduled && <span style={{color:'#000',fontSize:8,lineHeight:1}}>✓</span>}
+              </span>
+              ⏰ Programar para una fecha/hora
+            </button>
+            {scheduled && (
+              <input type="datetime-local" value={schedDate} onChange={e => setSchedDate(e.target.value)}
+                className="mt-2 w-full rounded-xl p-2 font-mono text-xs text-white border outline-none"
+                style={{background:'rgba(255,255,255,0.05)',borderColor:'rgba(0,255,136,0.25)'}} />
+            )}
+          </div>
+        )}
+        <div>
+          <p className="font-mono text-[9px] mb-2" style={{color:'rgba(255,255,255,0.28)'}}>EJEMPLOS RÁPIDOS — toca para usar:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {EXAMPLES.map((ex,i) => (
+              <button key={i} onClick={() => setInput(ex)}
+                className="px-2.5 py-1 rounded-full border font-mono text-[9px] active:scale-95 transition-all"
+                style={{borderColor:'rgba(255,255,255,0.12)',color:'rgba(255,255,255,0.55)',background:'rgba(255,255,255,0.03)'}}>
+                {ex}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button disabled={!input.trim()}
+          onClick={() => { playSound('click'); onExecute(input + (scheduled && schedDate ? ` — programado ${new Date(schedDate).toLocaleDateString('es-MX',{weekday:'long',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}` : '')) }}
+          className="w-full py-4 rounded-2xl font-mono font-black text-base disabled:opacity-40 active:scale-95 transition-all"
+          style={{background:isPremium?'#00ff88':'#f5a623',color:'#000'}}>
+          🤖 Que el agente ejecute
+        </button>
+        <p className="font-mono text-center text-[8px]" style={{color:'rgba(255,255,255,0.18)'}}>
+          {isPremium?'Wallet fría USDC conectada · autopilot disponible':'Requiere cuenta Bitso activa · trades reales en MXN'}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Game2() {
   const [screen, setScreen] = useState<Screen>('home')
   const livePrice = useLivePrice()
   const [tradeAction, setTradeAction] = useState('')
   const [result, setResult] = useState<TradeResult | null>(null)
+  const [currentPlan, setCurrentPlan] = useState<string>('free')
   const { balance, loggedIn } = useSession()
   const { hist, addTrade, total } = useHistory()
   const wallet = useWallet()
@@ -1390,10 +1539,10 @@ export default function Game2() {
     setScreen('result')
   }
 
-  if (screen === 'home')      return <PathScreen onPath={p => p === 'quick' ? setScreen('path') : p === 'manual' ? setScreen('manual') : setScreen('hodl')} wallet={wallet} balance={balance} loggedIn={loggedIn} />
+  if (screen === 'home')      return <PathScreen onPath={p => p === 'quick' ? setScreen('path') : p === 'manual' ? setScreen('manual') : p === 'plans' ? setScreen('plans') : setScreen('hodl')} wallet={wallet} balance={balance} loggedIn={loggedIn} />
   if (screen === 'path')      return (
     <>
-      <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} wallet={wallet} />
+      <HomeScreen onMode={m => m === 'plans' ? setScreen('plans') : setScreen(m)} balance={balance} loggedIn={loggedIn} wallet={wallet} />
       <div style={{position:'fixed',bottom:'80px',left:0,right:0,zIndex:20}}><HistoryPanel hist={hist} total={total} /></div>
     </>
   )
@@ -1423,6 +1572,8 @@ export default function Game2() {
   )
   if (screen === 'hodlscreen') return <HodlScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
   if (screen === 'stocks')    return <StocksScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
+  if (screen === 'plans')     return <PlansScreen onBack={() => setScreen('home')} onSelectPlan={p => { setCurrentPlan(p); p === 'free' ? setScreen('home') : setScreen('command') }} />
+  if (screen === 'command')   return <CommandScreen onBack={() => setScreen('plans')} onExecute={executeTrade} plan={currentPlan} />
   if (screen === 'manual')    return <ManualScreen onExecute={executeTrade} onBack={() => setScreen('path')} loggedIn={loggedIn} />
   if (screen === 'copy')      return <CopyScreen  onExecute={executeTrade} onBack={() => setScreen('path')} loggedIn={loggedIn} />
   if (screen === 'executing') return <ExecutingScreen action={tradeAction} />
