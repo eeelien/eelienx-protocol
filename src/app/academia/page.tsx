@@ -116,6 +116,17 @@ const SIGNAL_CANDLES: Candle[] = [
   {o:50,h:58,l:49,c:57},
 ]
 
+
+// ── MANUAL TRADE EXAMPLE DATA ─────────────────────────────────────────────────
+const ENTRY_OK: Candle[] = [
+  {o:48,h:50,l:44,c:46},{o:46,h:47,l:42,c:43},{o:43,h:44,l:40,c:41},
+  {o:41,h:43,l:39,c:43},{o:43,h:51,l:42,c:50},{o:50,h:56,l:49,c:55},
+]
+const ENTRY_BAD: Candle[] = [
+  {o:60,h:68,l:59,c:66},{o:66,h:70,l:64,c:69},{o:69,h:72,l:66,c:68},
+  {o:68,h:69,l:62,c:64},{o:64,h:65,l:57,c:59},{o:59,h:60,l:52,c:54},
+]
+
 const lessons = [
   {
     id: 'holdeo',
@@ -288,6 +299,61 @@ const lessons = [
     ]
   },
   {
+    id: 'manual',
+    emoji: '🎮',
+    title: 'Trading Manual',
+    level: 'Práctico',
+    subtitle: 'Cuándo comprar, cuándo vender, cómo poner posiciones',
+    color: '#f5a623',
+    content: [
+      {
+        type: 'intro',
+        text: 'El trading manual es cuando TÚ decides cuándo entrar y cuándo salir. El agente no toma decisiones — tú das la orden. Para hacerlo bien, necesitas saber leer 3 cosas: el precio, el RSI y el MACD.'
+      },
+      { type: 'chart', chartType: 'candles_signal' },
+      {
+        type: 'key',
+        title: '✅ Cuándo ES buen momento para comprar',
+        points: [
+          'El precio cayó varios días y empieza a rebotar (vela verde grande)',
+          'RSI está por debajo de 35 (sobrevendido — el mercado exageró la caída)',
+          'MACD cruza hacia arriba (momentum cambia de dirección)',
+          'Hay una vela "martillo" o "envolvente alcista" (señal de reversión)',
+        ]
+      },
+      {
+        type: 'key',
+        title: '❌ Cuándo NO comprar',
+        points: [
+          'El precio lleva días subiendo sin parar (RSI > 70 = sobrecomprado)',
+          'Hay noticias negativas o incertidumbre del mercado (crypto baja en pánico)',
+          'El MACD cruza hacia abajo (los vendedores están ganando)',
+          'Velas rojas en cascada — no pelees contra la tendencia',
+        ]
+      },
+      {
+        type: 'example',
+        title: '📐 Cómo abrir una posición manual',
+        text: 'En eelienX: selecciona Modo Experto → Manual → elige el activo (ETH, BTC, SOL) → escribe cuánto quieres arriesgar → pon tu Stop Loss (límite de pérdida) y Take Profit (objetivo de ganancia) → dale a EJECUTAR. El agente envía la orden a Bitso.'
+      },
+      {
+        type: 'example',
+        title: '🛡️ Stop Loss y Take Profit',
+        text: 'Stop Loss = el precio al que el agente vende automáticamente para que no pierdas más. Take Profit = el precio al que el agente toma tus ganancias. Regla de oro: nunca arriesgues más de lo que puedes perder. El 1%-2% del portafolio por trade es lo estándar entre pros.'
+      },
+      {
+        type: 'warning',
+        text: '⚠️ Tu wallet (MetaMask) es solo para ver tu saldo ETH. Los trades reales usan tu cuenta Bitso. Conectar la wallet NO autoriza ningún gasto — tus fondos están seguros 🔒'
+      },
+      {
+        type: 'quiz',
+        question: 'El RSI está en 28 y ves una vela verde grande después de 5 días de caída. ¿Qué haces?',
+        options: ['Vendo todo — el mercado está raro', '✅ Podría ser un buen momento para entrar con poco', 'Espero a que el RSI llegue a 70'],
+        correct: 1
+      }
+    ]
+  },
+  {
     id: 'macd',
     emoji: '📈',
     title: 'MACD — Detectar tendencias',
@@ -337,6 +403,7 @@ const levelColors: Record<string, string> = {
   'Intermedio': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
   'Avanzado': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
   'Esencial': 'bg-red-500/20 text-red-400 border-red-500/30',
+  'Práctico': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
 };
 
 const cardColors: Record<string, string> = {

@@ -233,7 +233,7 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 550); return () => clearInterval(t) }, [])
 
   return (
-    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)', cursor: 'url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 20,20 12,15 4,20' fill='%235e72e4' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E") 12 2, auto' }}>
+    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
       <style>{`
         @keyframes alien-bob  { from { transform: translateY(0); } to { transform: translateY(-6px); } }
         @keyframes alien-jump { from { transform: translateY(0) rotate(-5deg); } to { transform: translateY(-18px) rotate(5deg); } }
@@ -369,16 +369,28 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
             <span className="block font-normal text-xs mt-0.5 opacity-55">Aprende a analizar gráficas como los pros</span>
           </a>
 
+          {/* Manual + Academia row */}
+          <div className="flex gap-3 w-full">
+            <button onClick={() => { playSound('click'); onMode('manual') }}
+              className="flex-1 flex flex-col items-center gap-1 py-4 rounded-2xl border active:scale-95 transition-all"
+              style={{borderColor:'rgba(255,255,255,0.15)',background:'rgba(255,255,255,0.04)'}}>
+              <span className="text-xl">🎮</span>
+              <span className="font-mono text-xs font-bold text-white">Manual</span>
+              <span className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.35)'}}>Tú decides</span>
+            </button>
+            <a href="/academia"
+              className="flex-1 flex flex-col items-center gap-1 py-4 rounded-2xl border active:scale-95 transition-all"
+              style={{borderColor:'rgba(94,114,228,0.35)',background:'rgba(94,114,228,0.06)'}}>
+              <span className="text-xl">📊</span>
+              <span className="font-mono text-xs font-bold" style={{color:'#5e72e4'}}>Academia</span>
+              <span className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.35)'}}>Aprende</span>
+            </a>
+          </div>
           {!loggedIn && !wallet.address && (
-            <a href="/login" className="text-center font-mono text-xs py-2" style={{color:'rgba(255,255,255,0.20)'}}>
-              → Conectar cuenta Bitso para trades reales en MXN
+            <a href="/login" className="text-center font-mono text-xs py-1" style={{color:'rgba(255,255,255,0.18)'}}>
+              → Conectar cuenta Bitso para trades reales
             </a>
           )}
-          <a href="/academia" className="flex items-center justify-center gap-2 py-3 rounded-2xl border active:scale-95 transition-all"
-            style={{borderColor:'rgba(94,114,228,0.25)',color:'#5e72e4',background:'rgba(94,114,228,0.05)'}}>
-            <span className="font-mono text-sm font-bold">📊 Ir a Academia</span>
-            <span className="font-mono text-xs opacity-60">Aprende a analizar gráficas</span>
-          </a>
         </div>
       </div>
 
@@ -493,13 +505,13 @@ function buildTip(p: PriceData | null) {
 
 // ── PATH SELECTOR ─────────────────────────────────────────────────────────────
 function PathScreen({ onPath, wallet, balance, loggedIn }: {
-  onPath: (p: 'quick'|'long') => void
+  onPath: (p: 'quick'|'long'|'manual') => void
   wallet: ReturnType<typeof useWallet>; balance: { mxn?: number; eth?: number } | null; loggedIn: boolean
 }) {
   const [blink, setBlink] = useState(true)
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 600); return () => clearInterval(t) }, [])
   return (
-    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)', cursor: 'url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 20,20 12,15 4,20' fill='%235e72e4' stroke='%23fff' stroke-width='1'/%3E%3C/svg%3E") 12 2, auto' }}>
+    <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
       {/* Universe background: static stars + warp burst from ship */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <style>{`
@@ -561,10 +573,13 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
             <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>🦊 {wallet.short}</span>
           </button>
         ) : (
-          <button onClick={wallet.connect} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
-            style={{ background:'rgba(245,166,35,0.06)', borderColor:'rgba(245,166,35,0.25)' }}>
-            <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>🦊 Conectar Wallet</span>
-          </button>
+          <div className="flex flex-col items-end gap-0.5">
+            <button onClick={wallet.connect} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border"
+              style={{ background:'rgba(245,166,35,0.06)', borderColor:'rgba(245,166,35,0.25)' }}>
+              <span className="font-mono text-[10px]" style={{color:'#f5a623'}}>🦊 Conectar Wallet</span>
+            </button>
+            <span className="font-mono text-[8px]" style={{color:'rgba(255,255,255,0.25)'}}>Solo lectura · tus fondos están seguros 🔒</span>
+          </div>
         )}
       </div>
 
@@ -1375,7 +1390,7 @@ export default function Game2() {
     setScreen('result')
   }
 
-  if (screen === 'home')      return <PathScreen onPath={p => setScreen(p === 'quick' ? 'path' : 'hodl')} wallet={wallet} balance={balance} loggedIn={loggedIn} />
+  if (screen === 'home')      return <PathScreen onPath={p => p === 'quick' ? setScreen('path') : p === 'manual' ? setScreen('manual') : setScreen('hodl')} wallet={wallet} balance={balance} loggedIn={loggedIn} />
   if (screen === 'path')      return (
     <>
       <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} wallet={wallet} />
