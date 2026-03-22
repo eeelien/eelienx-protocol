@@ -446,15 +446,9 @@ function useWallet() {
     const w = window as any
     // Prefer MetaMask, fallback to any ethereum provider
     const eth = w.ethereum
-    const phantom = w.phantom
-
-    // Phantom is primarily Solana — check if it also has eth support
-    if (!eth && phantom?.solana) {
-      alert('👻 Phantom es para Solana. Para operar ETH necesitas MetaMask 🦊\nhttps://metamask.io')
-      return
-    }
+    // Phantom injects window.ethereum too — any EIP-1193 provider works
     if (!eth) {
-      alert('🦊 Instala MetaMask para conectar tu wallet ETH\nhttps://metamask.io')
+      alert('🦊 Necesitas una wallet Ethereum para conectar.\nInstala MetaMask: https://metamask.io\n\n(Phantom también funciona si activas su red Ethereum)')
       return
     }
     setConnecting(true)
@@ -624,6 +618,28 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
             <p className="font-mono text-xl font-black mb-2" style={{color:'#00ff88'}}>seguro a largo plazo</p>
             <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.40)'}}>Copia los portafolios de los mejores HODLers e inversores del mundo — el agente automatiza todo</p>
           </button>
+
+          {/* Row: Manual + Academia + Plans */}
+          <div className="flex gap-2 w-full">
+            <button onClick={() => { playSound('click'); onPath('manual') }}
+              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border active:scale-95 transition-all"
+              style={{borderColor:'rgba(255,255,255,0.12)',background:'rgba(255,255,255,0.03)'}}>
+              <span className="text-lg">🎮</span>
+              <span className="font-mono text-[10px] font-bold text-white">Manual</span>
+            </button>
+            <a href="/academia"
+              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border active:scale-95 transition-all"
+              style={{borderColor:'rgba(94,114,228,0.30)',background:'rgba(94,114,228,0.05)'}}>
+              <span className="text-lg">📊</span>
+              <span className="font-mono text-[10px] font-bold" style={{color:'#5e72e4'}}>Academia</span>
+            </a>
+            <button onClick={() => { playSound('click'); onPath('plans') }}
+              className="flex-1 flex flex-col items-center gap-1 py-3 rounded-2xl border active:scale-95 transition-all"
+              style={{borderColor:'rgba(0,255,136,0.25)',background:'rgba(0,255,136,0.04)'}}>
+              <span className="text-lg">💳</span>
+              <span className="font-mono text-[10px] font-bold" style={{color:'#00ff88'}}>Planes</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
