@@ -251,19 +251,26 @@ function HomeScreen({ onMode, balance, loggedIn }: { onMode: (m: 'manual'|'copy'
 
         {/* Buttons */}
         <div className="flex flex-col gap-4 w-full max-w-sm">
-          <button onClick={() => { playSound('click'); onMode('manual') }}
-            className="relative rounded-2xl border-2 py-5 px-6 font-mono font-black text-base active:scale-95 transition-transform"
-            style={{ borderColor:'#00ff88', color:'#00ff88', background:'rgba(0,255,136,0.06)', textShadow:'0 0 12px #00ff8860' }}>
-            🎮 MODO MANUAL
-            <span className="block font-normal text-xs mt-0.5 opacity-55">Tú decides · Agente analiza</span>
-          </button>
-
           <button onClick={() => { playSound('click'); onMode('copy') }}
             className="relative rounded-2xl border-2 py-5 px-6 font-mono font-black text-base active:scale-95 transition-transform"
             style={{ borderColor:'#f5a623', color:'#f5a623', background:'rgba(245,166,35,0.06)', textShadow:'0 0 12px #f5a62360' }}>
             🐋 COPY TRADING
-            <span className="block font-normal text-xs mt-0.5 opacity-55">Copia a los mejores traders</span>
+            <span className="block font-normal text-xs mt-0.5 opacity-55">Gana fácil copiando a los mejores traders 🏆</span>
           </button>
+
+          <button onClick={() => { playSound('click'); onMode('manual') }}
+            className="relative rounded-2xl border-2 py-5 px-6 font-mono font-black text-base active:scale-95 transition-transform"
+            style={{ borderColor:'#00ff88', color:'#00ff88', background:'rgba(0,255,136,0.06)', textShadow:'0 0 12px #00ff8860' }}>
+            🎮 MODO EXPERTO
+            <span className="block font-normal text-xs mt-0.5 opacity-55">Dale órdenes a tu agente — él ejecuta las posiciones 🧠</span>
+          </button>
+
+          <a href="/academia" onClick={() => playSound('click')}
+            className="relative rounded-2xl border-2 py-4 px-6 font-mono font-black text-base active:scale-95 transition-transform text-center block"
+            style={{ borderColor:'#5e72e4', color:'#5e72e4', background:'rgba(94,114,228,0.06)', textShadow:'0 0 12px #5e72e460' }}>
+            📊 ACADEMIA
+            <span className="block font-normal text-xs mt-0.5 opacity-55">Aprende a analizar gráficas como los pros</span>
+          </a>
 
           {!loggedIn && (
             <a href="/login" className="text-center font-mono text-xs py-3" style={{color:'rgba(255,255,255,0.25)'}}>
@@ -327,6 +334,60 @@ function useHistory() {
 
 // ── MANUAL ────────────────────────────────────────────────────────────────────
 
+// ── MULTI-AGENT PANEL ─────────────────────────────────────────────────────────
+const COLLAB_AGENTS = [
+  { id: 'vitalik', name: 'Vitalik Agent', role: 'Risk análysis', color: '#7B2FFF', emoji: '🔷', tip: 'Analiza el riesgo sistémico y pone stop-loss automáticos.' },
+  { id: 'cz',      name: 'CZ Agent',     role: 'Portfolio hedge', color: '#F3BA2F', emoji: '🌕', tip: 'Diversifica entre ETH/BTC para reducir volatilidad total.' },
+]
+
+function MultiAgentPanel() {
+  const [active, setActive] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const sel = COLLAB_AGENTS.find(a => a.id === active)
+
+  const handleSelect = (id: string) => {
+    playSound('click')
+    if (active === id) { setActive(null); return }
+    setActive(id); setSyncing(true)
+    setTimeout(() => setSyncing(false), 1400)
+  }
+
+  return (
+    <div className="rounded-2xl border p-4" style={{background:'rgba(94,114,228,0.04)',borderColor:'rgba(94,114,228,0.18)'}}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="font-mono text-xs font-bold" style={{color:'#5e72e4'}}>⬡ Colaborar con otro agente</span>
+        <span className="font-mono text-[9px] px-1.5 py-0.5 rounded-full" style={{background:'rgba(94,114,228,0.15)',color:'#5e72e4'}}>Multi-agent</span>
+      </div>
+      <p className="font-mono text-[9px] mb-3" style={{color:'rgba(255,255,255,0.35)'}}>Tu agente + otro agente trabajan juntos — uno ejecuta, el otro protege tu posición.</p>
+      <div className="flex gap-2">
+        {COLLAB_AGENTS.map(a => (
+          <button key={a.id} onClick={() => handleSelect(a.id)}
+            className="flex-1 rounded-xl border p-3 text-left active:scale-95 transition-all"
+            style={{
+              borderColor: active===a.id ? a.color : 'rgba(255,255,255,0.08)',
+              background: active===a.id ? `${a.color}12` : 'transparent',
+            }}>
+            <div className="flex items-center gap-1.5 mb-1">
+              <span>{a.emoji}</span>
+              <span className="font-mono text-[10px] font-bold text-white">{a.name}</span>
+            </div>
+            <p className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.40)'}}>{a.role}</p>
+          </button>
+        ))}
+      </div>
+      {sel && (
+        <div className="mt-3 flex items-center gap-2">
+          {syncing
+            ? <><span className="w-2 h-2 rounded-full animate-ping" style={{background:sel.color}} /><span className="font-mono text-[10px]" style={{color:sel.color}}>Sincronizando agentes…</span></>
+            : <><span className="w-2 h-2 rounded-full" style={{background:sel.color}} /><span className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.55)'}}>{sel.tip}</span></>
+          }
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>void; onBack:()=>void; loggedIn:boolean }) {
   const [action, setAction] = useState<'buy'|'sell'|null>(null)
   const livePrice = useLivePrice()
@@ -377,6 +438,9 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
             <span className="font-mono text-[10px] font-bold" style={{color:'#ff4444'}}>SELL si sube 5%</span>
           </div>
         </div>
+
+        {/* Multi-agent collaboration toggle */}
+        <MultiAgentPanel />
 
         {/* BUY / SELL */}
         <div className="grid grid-cols-2 gap-3">
@@ -530,11 +594,26 @@ function CopyScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>voi
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{background:'rgba(255,255,255,0.05)'}}>
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-2" style={{background:'rgba(255,255,255,0.05)'}}>
               <span className="font-mono text-xs" style={{color:'rgba(255,255,255,0.35)'}}>MXN</span>
               <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
                 className="flex-1 bg-transparent font-mono text-base font-bold text-white outline-none"
                 style={{minWidth:0}} />
+            </div>
+            {/* % of portfolio slider */}
+            <div className="mb-3">
+              <div className="flex justify-between mb-1">
+                <span className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.35)'}}>% del portafolio a arriesgar</span>
+                <span className="font-mono text-[9px] font-bold" style={{color: trader.color}}>{Math.round((parseInt(amount)||0)/50)}%</span>
+              </div>
+              <input type="range" min="1" max="100" value={Math.min(100,Math.round((parseInt(amount)||0)/50))}
+                onChange={e => setAmount(String(parseInt(e.target.value)*50))}
+                className="w-full h-1 rounded-full appearance-none cursor-pointer"
+                style={{accentColor: trader.color}} />
+              <div className="flex justify-between mt-0.5">
+                <span className="font-mono text-[8px]" style={{color:'#555'}}>Conservador</span>
+                <span className="font-mono text-[8px]" style={{color:'#555'}}>Agresivo</span>
+              </div>
             </div>
             <NPC text={trader.tip} color={trader.color} />
           </div>
