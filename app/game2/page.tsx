@@ -19,6 +19,56 @@ function MiniChart({ color }: { color: string }) {
   )
 }
 
+// ── Sound engine (Web Audio API — no files needed) ────────────────────────────
+function playSound(type: 'coin' | 'lose' | 'click' | 'execute') {
+  if (typeof window === 'undefined') return
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
+    const now = ctx.currentTime
+
+    if (type === 'coin') {
+      // Mario-style coin: quick ascending beeps
+      const freqs = [523, 659, 784, 1047]
+      freqs.forEach((f, i) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'square'; osc.frequency.setValueAtTime(f, now + i * 0.08)
+        gain.gain.setValueAtTime(0.15, now + i * 0.08)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.12)
+        osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.15)
+      })
+    } else if (type === 'lose') {
+      // Sad descending trombone-ish
+      const freqs = [392, 349, 311, 261]
+      freqs.forEach((f, i) => {
+        const osc = ctx.createOscillator(); const gain = ctx.createGain()
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(f, now + i * 0.18)
+        gain.gain.setValueAtTime(0.12, now + i * 0.18)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.18 + 0.25)
+        osc.start(now + i * 0.18); osc.stop(now + i * 0.18 + 0.28)
+      })
+    } else if (type === 'click') {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sine'; osc.frequency.setValueAtTime(880, now)
+      gain.gain.setValueAtTime(0.08, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+      osc.start(now); osc.stop(now + 0.1)
+    } else if (type === 'execute') {
+      // Power-up ascending sweep
+      const osc = ctx.createOscillator(); const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(300, now)
+      osc.frequency.exponentialRampToValueAtTime(1200, now + 0.4)
+      gain.gain.setValueAtTime(0.12, now)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+      osc.start(now); osc.stop(now + 0.5)
+    }
+  } catch { /* AudioContext blocked */ }
+}
+
 // ── Money rain ─────────────────────────────────────────────────────────────────
 function MoneyRain() {
   const coins = Array.from({ length: 18 }, (_, i) => i)
@@ -64,6 +114,30 @@ function MoneyRain() {
   )
 }
 
+// ── NPC Dialog Box ────────────────────────────────────────────────────────────
+function NPCDialog({ text, speaker = '🤖 Agente', color = '#5e72e4' }: { text: string; speaker?: string; color?: string }) {
+  const [displayed, setDisplayed] = useState('')
+  useEffect(() => {
+    setDisplayed('')
+    let i = 0
+    const t = setInterval(() => {
+      setDisplayed(text.slice(0, ++i))
+      if (i >= text.length) clearInterval(t)
+    }, 28)
+    return () => clearInterval(t)
+  }, [text])
+  return (
+    <div className="rounded-2xl border-2 p-4 relative" style={{ borderColor: `${color}50`, background: `${color}0D` }}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-lg">{speaker.split(' ')[0]}</span>
+        <span className="font-mono text-xs font-bold" style={{ color }}>{speaker.split(' ').slice(1).join(' ')}</span>
+        <span className="ml-auto text-xs animate-pulse" style={{ color: `${color}80` }}>▮</span>
+      </div>
+      <p className="font-mono text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.80)' }}>{displayed}<span className="animate-pulse">|</span></p>
+    </div>
+  )
+}
+
 // ── HOME SCREEN ────────────────────────────────────────────────────────────────
 function HomeScreen({ onMode }: { onMode: (m: 'manual' | 'copy') => void }) {
   const [blink, setBlink] = useState(true)
@@ -98,7 +172,7 @@ function HomeScreen({ onMode }: { onMode: (m: 'manual' | 'copy') => void }) {
 
       {/* Mode buttons */}
       <div className="flex flex-col gap-4 w-full max-w-xs relative z-10">
-        <button onClick={() => onMode('manual')}
+        <button onClick={() => { playSound('click'); onMode('manual') }}
           className="group relative overflow-hidden rounded-2xl border-2 px-8 py-5 font-mono font-bold text-base transition-all hover:scale-105 active:scale-95"
           style={{ borderColor: '#00ff88', color: '#00ff88', background: 'rgba(0,255,136,0.05)', textShadow: '0 0 10px #00ff8870' }}>
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(0,255,136,0.08)' }} />
@@ -106,7 +180,7 @@ function HomeScreen({ onMode }: { onMode: (m: 'manual' | 'copy') => void }) {
           <div className="font-normal text-xs mt-1 opacity-60">Tú decides · Agente analiza</div>
         </button>
 
-        <button onClick={() => onMode('copy')}
+        <button onClick={() => { playSound('click'); onMode('copy') }}
           className="group relative overflow-hidden rounded-2xl border-2 px-8 py-5 font-mono font-bold text-base transition-all hover:scale-105 active:scale-95"
           style={{ borderColor: '#f5a623', color: '#f5a623', background: 'rgba(245,166,35,0.05)', textShadow: '0 0 10px #f5a62370' }}>
           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'rgba(245,166,35,0.08)' }} />
@@ -155,23 +229,16 @@ function ManualScreen({ onExecute, onBack }: { onExecute: (action: string) => vo
           <MiniChart color="#00ff88" />
         </div>
 
-        {/* Agent analysis */}
-        <div className="rounded-2xl border p-4" style={{ background: 'rgba(94,114,228,0.08)', borderColor: 'rgba(94,114,228,0.25)' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-lg">🤖</span>
-            <span className="font-mono text-xs font-bold" style={{ color: '#5e72e4' }}>ANÁLISIS DEL AGENTE</span>
-          </div>
-          <p className="font-mono text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.75)' }}>{tip.msg}</p>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="font-mono text-xs" style={{ color: '#555' }}>Riesgo:</span>
-            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: riskColor, background: `${riskColor}15`, border: `1px solid ${riskColor}40` }}>{tip.risk}</span>
-          </div>
+        <NPCDialog text={action ? `Acción seleccionada: ${action.toUpperCase()}. ${tip.msg} Confirma si quieres proceder.` : `Analizando mercado… ${tip.msg}`} />
+        <div className="flex items-center gap-2 px-1">
+          <span className="font-mono text-xs" style={{ color: '#555' }}>Nivel de riesgo:</span>
+          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-full" style={{ color: riskColor, background: `${riskColor}15`, border: `1px solid ${riskColor}40` }}>{tip.risk}</span>
         </div>
 
         {/* BUY / SELL */}
         <div className="grid grid-cols-2 gap-3">
           {(['buy', 'sell'] as const).map(a => (
-            <button key={a} onClick={() => setAction(a)}
+            <button key={a} onClick={() => { playSound('click'); setAction(a) }}
               className="rounded-2xl border-2 py-4 font-mono font-black text-lg transition-all hover:scale-105 active:scale-95"
               style={{
                 borderColor: action === a ? (a === 'buy' ? '#00ff88' : '#ff4444') : 'rgba(255,255,255,0.1)',
@@ -187,7 +254,7 @@ function ManualScreen({ onExecute, onBack }: { onExecute: (action: string) => vo
         {/* Execute */}
         <button
           disabled={!action}
-          onClick={() => action && onExecute(action.toUpperCase())}
+          onClick={() => { if (action) { playSound('execute'); onExecute(action.toUpperCase()) } }}
           className="rounded-2xl py-5 font-mono font-black text-base transition-all disabled:opacity-30"
           style={{
             background: action ? 'linear-gradient(135deg, #5e72e4, #00ff88)' : 'rgba(255,255,255,0.05)',
@@ -249,21 +316,15 @@ function CopyScreen({ onExecute, onBack }: { onExecute: (action: string) => void
           </button>
         ))}
 
-        {/* Agent analysis of selected */}
         {whale && (
-          <div className="rounded-2xl border p-4" style={{ background: 'rgba(94,114,228,0.08)', borderColor: 'rgba(94,114,228,0.25)', animation: 'slide-up 0.3s ease' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">🤖</span>
-              <span className="font-mono text-xs font-bold" style={{ color: '#5e72e4' }}>AGENTE ANALIZA</span>
-            </div>
-            <p className="font-mono text-sm" style={{ color: 'rgba(255,255,255,0.75)' }}>{whale.tip}</p>
-            <p className="font-mono text-sm mt-1 font-bold" style={{ color: whale.color }}>P&L esta semana: {whale.pnl}</p>
-          </div>
+          <>
+            <NPCDialog text={`${whale.tip} P&L esta semana: ${whale.pnl}. Confirma si quieres copiar este trade.`} color={whale.color} />
+          </>
         )}
 
         <button
           disabled={selected === null}
-          onClick={() => whale && onExecute(`COPY·${whale.name.toUpperCase()}`)}
+          onClick={() => { if (whale) { playSound('execute'); onExecute(`COPY·${whale.name.toUpperCase()}`) } }}
           className="rounded-2xl py-5 font-mono font-black text-base transition-all disabled:opacity-30"
           style={{
             background: whale ? `linear-gradient(135deg, ${whale.color}, #5e72e4)` : 'rgba(255,255,255,0.05)',
@@ -302,13 +363,18 @@ function ExecutingScreen({ action }: { action: string }) {
           EJECUTANDO{dots}
         </h2>
         <p className="font-mono text-sm mb-8" style={{ color: 'rgba(255,255,255,0.4)' }}>{action}</p>
-        <div className="space-y-2 text-left max-w-xs mx-auto">
+        <div className="space-y-2 text-left max-w-sm mx-auto w-full">
           {msgs.slice(0, msgIdx + 1).map((m, i) => (
             <div key={i} className="font-mono text-xs flex items-center gap-2"
               style={{ color: i < msgIdx ? '#2E7D6B' : '#00ff88', animation: 'slide-up 0.3s ease' }}>
               <span>{i < msgIdx ? '✓' : '▸'}</span> {m}
             </div>
           ))}
+          {msgIdx >= 2 && (
+            <div className="mt-3">
+              <NPCDialog text="Procesando orden en la blockchain… Espera confirmación de Base Sepolia." color="#00ff88" speaker="🔗 Protocolo" />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -318,7 +384,7 @@ function ExecutingScreen({ action }: { action: string }) {
 // ── RESULT SCREEN ──────────────────────────────────────────────────────────────
 function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay: () => void }) {
   const [show, setShow] = useState(false)
-  useEffect(() => { setTimeout(() => setShow(true), 100) }, [])
+  useEffect(() => { setTimeout(() => setShow(true), 100); playSound(result.win ? 'coin' : 'lose') }, [])
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 relative overflow-hidden"
@@ -354,7 +420,7 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay: () 
         </div>
 
         <div className="flex flex-col gap-3 max-w-xs mx-auto">
-          <button onClick={onReplay}
+          <button onClick={() => { playSound('click'); onReplay() }}
             className="rounded-2xl py-4 font-mono font-black text-base transition-all hover:scale-105 active:scale-95"
             style={{ background: 'linear-gradient(135deg, #5e72e4, #00ff88)', color: 'white', boxShadow: '0 8px 30px rgba(94,114,228,0.4)' }}>
             🔄 JUGAR OTRA VEZ
