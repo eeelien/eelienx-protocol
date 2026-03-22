@@ -337,67 +337,138 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
 }
 
 // ── COPY ──────────────────────────────────────────────────────────────────────
-const WHALES = [
-  { name:'Elon',    emoji:'🦅', pct:'+12%', win:82, color:'#1DA1F2', risk:'MED', tip:'Acumula en caídas — buena racha esta semana. Riesgo moderado.' },
-  { name:'Vitalik', emoji:'🔷', pct:'+8%',  win:91, color:'#7B2FFF', risk:'LOW', tip:'Perfil conservador, tasa de éxito 91%. Muy recomendado para principiantes.' },
-  { name:'CZ',      emoji:'🌕', pct:'+5%',  win:85, color:'#F3BA2F', risk:'MED', tip:'Operativa diversificada ETH + BTC. Riesgo moderado, retornos estables.' },
-]
+// ── COPY TRADERS ──────────────────────────────────────────────────────────────
+function useLiveTraders(baseChange: number | null) {
+  // Generate trader gains based on real ETH price movement + personality variance
+  const base = baseChange ?? 2.1
+  return [
+    {
+      name: 'Vitalik.eth',
+      handle: '@vitalikbuterin',
+      emoji: '🔷',
+      color: '#7B2FFF',
+      risk: 'BAJO',
+      win: 91,
+      pct: base > 0 ? `+${(base * 0.85 + 1.2).toFixed(1)}%` : `${(base * 0.6 - 0.5).toFixed(1)}%`,
+      raw: base > 0 ? base * 0.85 + 1.2 : base * 0.6 - 0.5,
+      tip: 'Perfil conservador, 91% de aciertos. Ideal si es tu primera vez.',
+    },
+    {
+      name: 'CZ Binance',
+      handle: '@cz_binance',
+      emoji: '🌕',
+      color: '#F3BA2F',
+      risk: 'MEDIO',
+      win: 85,
+      pct: base > 0 ? `+${(base * 1.1 + 2.3).toFixed(1)}%` : `${(base * 0.9 - 1.1).toFixed(1)}%`,
+      raw: base > 0 ? base * 1.1 + 2.3 : base * 0.9 - 1.1,
+      tip: 'Portafolio diversificado ETH + BTC. Retornos estables, riesgo moderado.',
+    },
+    {
+      name: 'Elon Musk',
+      handle: '@elonmusk',
+      emoji: '🚀',
+      color: '#1DA1F2',
+      risk: 'ALTO',
+      win: 78,
+      pct: base > 0 ? `+${(base * 1.8 + 4.1).toFixed(1)}%` : `${(base * 1.4 - 2.8).toFixed(1)}%`,
+      raw: base > 0 ? base * 1.8 + 4.1 : base * 1.4 - 2.8,
+      tip: 'Movimientos agresivos — alta ganancia, mayor riesgo. Solo si sabes lo que haces.',
+    },
+  ]
+}
 
 function CopyScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>void; onBack:()=>void; loggedIn:boolean }) {
   const [sel, setSel] = useState<number|null>(null)
-  const whale = sel !== null ? WHALES[sel] : null
+  const [amount, setAmount] = useState('500')
+  const livePrice = useLivePrice()
+  const traders = useLiveTraders(livePrice?.change24 ?? null)
+  const trader = sel !== null ? traders[sel] : null
 
   return (
     <div className="flex flex-col min-h-dvh" style={{background:'#0d0d1a'}}>
+      {/* Nav */}
       <div className="flex items-center justify-between px-5 pt-safe pt-4 pb-3 border-b" style={{borderColor:'rgba(255,255,255,0.06)'}}>
         <button onClick={onBack} className="font-mono text-xs active:opacity-60 p-1" style={{color:'#555'}}>← VOLVER</button>
         <span className="font-mono text-sm font-bold" style={{color:'#f5a623'}}>🐋 COPY TRADING</span>
-        <span className="font-mono text-xs" style={{color:'#555'}}>LIVE</span>
+        <span className="font-mono text-[10px] px-2 py-0.5 rounded-full" style={{color:'#00ff88',background:'rgba(0,255,136,0.1)'}}>● LIVE</span>
       </div>
 
       <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
-        <p className="font-mono text-xs text-center" style={{color:'rgba(255,255,255,0.28)'}}>Top traders ahora mismo</p>
+        {/* Headline */}
+        <div className="text-center py-2">
+          <p className="font-mono text-base font-black text-white mb-1">Si quieres ganar,</p>
+          <p className="font-mono text-base font-black" style={{color:'#f5a623'}}>sigue a los mejores traders del momento 🐋</p>
+          <p className="font-mono text-[10px] mt-1.5" style={{color:'rgba(255,255,255,0.28)'}}>Ganancias últimas 24h · ETH/MXN en tiempo real</p>
+        </div>
 
-        {WHALES.map((w,i) => (
+        {/* Trader cards */}
+        {traders.map((w, i) => (
           <button key={w.name} onClick={() => { playSound('click'); setSel(i) }}
             className="w-full rounded-2xl border-2 p-4 text-left active:scale-[0.98] transition-all"
             style={{
               borderColor: sel===i ? w.color : 'rgba(255,255,255,0.07)',
               background: sel===i ? `${w.color}10` : 'rgba(255,255,255,0.02)',
-              boxShadow: sel===i ? `0 0 20px ${w.color}25` : 'none',
+              boxShadow: sel===i ? `0 0 24px ${w.color}30` : 'none',
             }}>
             <div className="flex items-center gap-3">
-              <span className="text-3xl">{w.emoji}</span>
+              <div className="relative shrink-0">
+                <span className="text-3xl">{w.emoji}</span>
+                {sel===i && <span className="absolute -top-1 -right-1 text-xs">✓</span>}
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-2 mb-0.5">
                   <span className="font-mono text-sm font-black text-white">{w.name}</span>
-                  <span className="font-mono text-xs px-1.5 py-0.5 rounded" style={{color:w.color,background:`${w.color}20`}}>#{i+1}</span>
-                  <span className="font-mono text-xs ml-auto" style={{color:'#555'}}>Risk {w.risk}</span>
+                  <span className="font-mono text-[9px] px-1.5 py-0.5 rounded-full border"
+                    style={{color: w.risk==='BAJO'?'#00ff88':w.risk==='MEDIO'?'#f5a623':'#ff4444', borderColor: w.risk==='BAJO'?'#00ff8840':w.risk==='MEDIO'?'#f5a62340':'#ff444440'}}>
+                    Riesgo {w.risk}
+                  </span>
                 </div>
-                <MiniChart color={w.color} />
+                <p className="font-mono text-[10px]" style={{color:'rgba(255,255,255,0.35)'}}>{w.handle} · {w.win}% aciertos</p>
+                <div className="mt-2"><MiniChart color={w.color} /></div>
               </div>
               <div className="text-right shrink-0 ml-2">
-                <div className="font-mono text-2xl font-black" style={{color:w.color}}>{w.pct}</div>
-                <div className="font-mono text-xs" style={{color:'#555'}}>{w.win}% win</div>
+                <div className="font-mono text-2xl font-black" style={{color: w.raw >= 0 ? w.color : '#ff4444'}}>{w.pct}</div>
+                <div className="font-mono text-[9px]" style={{color:'rgba(255,255,255,0.30)'}}>últimas 24h</div>
               </div>
             </div>
           </button>
         ))}
 
-        {whale && (
-          <NPC text={`${whale.tip} Confirma si quieres copiar este trade.`} color={whale.color} />
+        {/* Amount picker — shows when trader selected */}
+        {trader && (
+          <div className="rounded-2xl border p-4" style={{background:'rgba(255,255,255,0.03)',borderColor:`${trader.color}30`}}>
+            <p className="font-mono text-xs font-bold mb-3 text-white">¿Cuánto quieres invertir?</p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {['200','500','1000','2000'].map(v => (
+                <button key={v} onClick={() => setAmount(v)}
+                  className="rounded-xl py-2.5 font-mono text-xs font-bold transition-all active:scale-95"
+                  style={{background: amount===v ? trader.color : 'rgba(255,255,255,0.06)', color: amount===v ? 'white' : 'rgba(255,255,255,0.45)'}}>
+                  ${v}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{background:'rgba(255,255,255,0.05)'}}>
+              <span className="font-mono text-xs" style={{color:'rgba(255,255,255,0.35)'}}>MXN</span>
+              <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
+                className="flex-1 bg-transparent font-mono text-base font-bold text-white outline-none"
+                style={{minWidth:0}} />
+            </div>
+            <NPC text={trader.tip} color={trader.color} />
+          </div>
         )}
       </div>
 
+      {/* CTA */}
       <div className="px-5 pb-safe pb-6 pt-3 border-t" style={{borderColor:'rgba(255,255,255,0.06)'}}>
-        <button disabled={!whale}
-          onClick={() => whale && (playSound('execute'), onExecute(`COPY·${whale.name.toUpperCase()}`))}
+        <button disabled={!trader}
+          onClick={() => trader && (playSound('execute'), onExecute(`COPY·${trader.name.toUpperCase()}·${amount}MXN`))}
           className="w-full rounded-2xl py-5 font-mono font-black text-base active:scale-95 transition-all disabled:opacity-25"
           style={{
-            background: whale ? `linear-gradient(135deg,${whale.color},#5e72e4)` : 'rgba(255,255,255,0.05)',
-            color:'white', boxShadow: whale ? `0 8px 30px ${whale.color}35` : 'none',
+            background: trader ? `linear-gradient(135deg,${trader.color},#5e72e4)` : 'rgba(255,255,255,0.05)',
+            color:'white', boxShadow: trader ? `0 8px 30px ${trader.color}35` : 'none',
           }}>
-          🐋 COPIAR TRADE
+          {trader ? `🐋 Copiar a ${trader.name} · $${amount} MXN` : '🐋 Elige un trader para continuar'}
         </button>
       </div>
     </div>
