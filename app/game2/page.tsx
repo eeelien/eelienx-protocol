@@ -76,6 +76,39 @@ function PixelAlien({ state = 'idle', size = 1 }: { state?: 'idle' | 'win' | 'lo
   )
 }
 
+
+// ── AVATAR HERO ───────────────────────────────────────────────────────────────
+function AvatarHero({ state = 'idle', size = 120 }: { state?: 'idle'|'win'|'lose'; size?: number }) {
+  const anim = state === 'win'  ? 'alien-jump 0.45s ease infinite alternate'
+             : state === 'lose' ? 'alien-sag 1.8s ease infinite alternate'
+             : 'alien-bob 2s ease infinite alternate'
+  const glow = state === 'win'  ? '0 0 30px rgba(0,255,136,0.6), 0 0 60px rgba(0,255,136,0.3)'
+             : state === 'lose' ? '0 0 20px rgba(255,68,68,0.4)'
+             : '0 0 20px rgba(94,114,228,0.5), 0 0 40px rgba(94,114,228,0.2)'
+  return (
+    <div style={{ position:'relative', display:'inline-block', animation: anim }}>
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        overflow:'hidden', border: '3px solid',
+        borderColor: state==='win' ? '#00ff88' : state==='lose' ? '#ff4444' : '#5e72e4',
+        boxShadow: glow,
+        position:'relative',
+      }}>
+        <img src="https://pub-79dff3b50b29432ba6d3f85b0af33331.r2.dev/eelienx/avatar.jpg" alt="39eliens"
+          style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display='none' }}
+        />
+      </div>
+      {state === 'win' && (
+        <div style={{ position:'absolute', top:-8, right:-8, fontSize:20, animation:'alien-jump 0.4s ease infinite alternate' }}>🏆</div>
+      )}
+      {state === 'lose' && (
+        <div style={{ position:'absolute', top:-8, right:-8, fontSize:20 }}>😢</div>
+      )}
+    </div>
+  )
+}
+
 // ── PIXEL SPACESHIP ───────────────────────────────────────────────────────────
 function PixelShip({ size = 1 }: { size?: number }) {
   const S = size * 4
@@ -272,9 +305,9 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
 
       {/* Hero */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center" style={{animation:'popin 0.6s ease'}}>
-        {/* Pixel alien mascot */}
-        <div className="mb-3" style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
-          <PixelAlien state="idle" size={2} />
+        {/* Avatar hero */}
+        <div className="mb-3">
+          <AvatarHero state="idle" size={120} />
         </div>
 
         <h1 className="font-mono font-black text-5xl mb-1.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:3 }}>
@@ -458,7 +491,7 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center gap-6">
         {/* Alien */}
         <div style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
-          <PixelAlien state="idle" size={2} />
+          <AvatarHero state="idle" size={120} />
         </div>
         <h1 className="font-mono font-black text-4xl" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470' }}>
           eelie<span style={{color:'#fff'}}>n</span>X
@@ -1142,7 +1175,7 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay:()=>
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center"
         style={{opacity: show?1:0, transition:'opacity 0.3s', animation: show?'popin 0.5s ease':'none'}}>
         <div className="mb-4">
-          <PixelAlien state={result.win ? 'win' : 'lose'} size={3} />
+          <AvatarHero state={result.win ? 'win' : 'lose'} size={130} />
         </div>
 
         <p className="font-mono font-black mb-1 tracking-widest" style={{fontSize:'clamp(22px,7vw,36px)', color:c}}>
