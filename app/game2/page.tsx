@@ -241,33 +241,35 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
         @keyframes ship-float { from { transform: translateX(-4px) translateY(-2px); } to { transform: translateX(4px) translateY(2px); } }
         @keyframes bill-fall  { 0% { transform: translateY(0) rotate(0deg); opacity:1; } 100% { transform: translateY(110vh) rotate(360deg); opacity:0; } }
       `}</style>
-      {/* Moving stars */}
+      {/* Warp stars – burst outward from center following the ship */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {Array.from({length:30}).map((_,i) => (
-          <div key={i} className="absolute rounded-full bg-white"
-            style={{
-              width: i%5===0 ? 3 : 2, height: i%5===0 ? 3 : 2,
-              left:`${(i*3.7)%100}%`,
-              top: `-${(i%10)*5}%`,
-              opacity: 0.3+(i%4)*0.15,
-              animation:`star-fall ${4+i%6}s ${i*0.3}s linear infinite`,
-            }} />
-        ))}
-        {/* Shooting stars */}
-        {[0,1,2].map(i => (
-          <div key={`shoot-${i}`} className="absolute"
-            style={{
-              width:60, height:1,
-              background:'linear-gradient(90deg,rgba(255,255,255,0.8),transparent)',
-              top:`${20+i*25}%`, left:'-10%',
-              animation:`shoot ${3+i*2}s ${i*4}s linear infinite`,
-            }} />
-        ))}
         <style>{`
-          @keyframes star-fall { 0%{transform:translateY(0);opacity:0} 10%{opacity:1} 90%{opacity:0.8} 100%{transform:translateY(110vh);opacity:0} }
-          @keyframes shoot { 0%{transform:translateX(0) rotate(-20deg);opacity:0} 5%{opacity:1} 30%{transform:translateX(120vw) rotate(-20deg);opacity:0} 100%{transform:translateX(120vw) rotate(-20deg);opacity:0} }
+          @keyframes warp-star { 0%{opacity:0;transform:var(--t0)} 15%{opacity:1} 80%{opacity:0.6} 100%{opacity:0;transform:var(--t1)} }
           @keyframes ship-patrol { 0%{transform:translateX(-10px) translateY(0) rotate(-5deg)} 20%{transform:translateX(10px) translateY(-8px) rotate(5deg)} 40%{transform:translateX(-5px) translateY(-15px) rotate(0deg)} 60%{transform:translateX(15px) translateY(-5px) rotate(8deg)} 80%{transform:translateX(-10px) translateY(3px) rotate(-3deg)} 100%{transform:translateX(-10px) translateY(0) rotate(-5deg)} }
         `}</style>
+        {Array.from({length:55}).map((_,i) => {
+          const angle = (i/55)*360
+          const rad   = (angle*Math.PI)/180
+          const vmax  = 65
+          const dx0   = Math.cos(rad)*5, dy0 = Math.sin(rad)*5
+          const dx1   = Math.cos(rad)*vmax*1.2, dy1 = Math.sin(rad)*vmax*1.2
+          const dur   = 1.3 + (i%5)*0.3
+          const delay = (i*0.065)%3.2
+          const size  = i%7===0 ? 2.2 : 1.4
+          return (
+            <div key={i} style={{
+              position:'absolute', left:'50%', top:'40%',
+              width: size*0.6, height: size,
+              borderRadius: 3,
+              background: i%4===0?'rgba(150,180,255,0.95)':i%3===0?'rgba(255,255,200,0.7)':'rgba(210,225,255,0.8)',
+              // @ts-ignore
+              '--t0': `translate(calc(-50% + ${dx0}px), calc(-50% + ${dy0}px)) scaleX(1)`,
+              '--t1': `translate(calc(-50% + ${dx1}px), calc(-50% + ${dy1}px)) scaleX(5)`,
+              animation: `warp-star ${dur}s ${delay}s linear infinite`,
+              pointerEvents: 'none',
+            }} />
+          )
+        })}
       </div>
 
       {/* Wallet + Balance row */}
@@ -305,9 +307,9 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
 
       {/* Hero */}
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center" style={{animation:'popin 0.6s ease'}}>
-        {/* Avatar hero */}
-        <div className="mb-3">
-          <AvatarHero state="idle" size={120} />
+        {/* Spaceship — leads the warp stars */}
+        <div className="mb-3" style={{filter:'drop-shadow(0 0 20px rgba(94,114,228,0.9))',animation:'ship-patrol 6s linear infinite'}}>
+          <PixelShip size={3} />
         </div>
 
         <h1 className="font-mono font-black text-5xl mb-1.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:3 }}>
@@ -477,13 +479,35 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
   useEffect(() => { const t = setInterval(() => setBlink(b => !b), 600); return () => clearInterval(t) }, [])
   return (
     <div className="flex flex-col min-h-dvh" style={{ background: 'linear-gradient(180deg,#0d0d1a 0%,#120d24 55%,#0d1a14 100%)' }}>
-      {/* Moving stars */}
+      {/* Warp stars – burst outward from center following the ship */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {Array.from({length:25}).map((_,i) => (
-          <div key={i} className="absolute rounded-full bg-white"
-            style={{ width:i%5===0?3:2, height:i%5===0?3:2, left:`${(i*3.9)%100}%`, top:`-${(i%8)*5}%`, opacity:0.3+(i%4)*0.15, animation:`star-fall ${4+i%5}s ${i*0.35}s linear infinite` }} />
-        ))}
-        <style>{`@keyframes star-fall{0%{transform:translateY(0);opacity:0}10%{opacity:1}90%{opacity:.8}100%{transform:translateY(110vh);opacity:0}}`}</style>
+        <style>{`
+          @keyframes warp-star { 0%{opacity:0;transform:var(--t0)} 15%{opacity:1} 80%{opacity:0.6} 100%{opacity:0;transform:var(--t1)} }
+          @keyframes ship-patrol { 0%{transform:translateX(-10px) translateY(0) rotate(-5deg)} 20%{transform:translateX(10px) translateY(-8px) rotate(5deg)} 40%{transform:translateX(-5px) translateY(-15px) rotate(0deg)} 60%{transform:translateX(15px) translateY(-5px) rotate(8deg)} 80%{transform:translateX(-10px) translateY(3px) rotate(-3deg)} 100%{transform:translateX(-10px) translateY(0) rotate(-5deg)} }
+        `}</style>
+        {Array.from({length:55}).map((_,i) => {
+          const angle = (i/55)*360
+          const rad   = (angle*Math.PI)/180
+          const vmax  = 65
+          const dx0   = Math.cos(rad)*5, dy0 = Math.sin(rad)*5
+          const dx1   = Math.cos(rad)*vmax*1.2, dy1 = Math.sin(rad)*vmax*1.2
+          const dur   = 1.3 + (i%5)*0.3
+          const delay = (i*0.065)%3.2
+          const size  = i%7===0 ? 2.2 : 1.4
+          return (
+            <div key={i} style={{
+              position:'absolute', left:'50%', top:'40%',
+              width: size*0.6, height: size,
+              borderRadius: 3,
+              background: i%4===0?'rgba(150,180,255,0.95)':i%3===0?'rgba(255,255,200,0.7)':'rgba(210,225,255,0.8)',
+              // @ts-ignore
+              '--t0': `translate(calc(-50% + ${dx0}px), calc(-50% + ${dy0}px)) scaleX(1)`,
+              '--t1': `translate(calc(-50% + ${dx1}px), calc(-50% + ${dy1}px)) scaleX(5)`,
+              animation: `warp-star ${dur}s ${delay}s linear infinite`,
+              pointerEvents: 'none',
+            }} />
+          )
+        })}
       </div>
 
       {/* Wallet badge */}
@@ -505,7 +529,7 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center gap-6">
         {/* Alien */}
         <div style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
-          <AvatarHero state="idle" size={120} />
+          <PixelShip size={3} />
         </div>
         <h1 className="font-mono font-black text-4xl" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470' }}>
           eelie<span style={{color:'#fff'}}>n</span>X
@@ -1196,8 +1220,8 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay:()=>
 
       <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center"
         style={{opacity: show?1:0, transition:'opacity 0.3s', animation: show?'popin 0.5s ease':'none'}}>
-        <div className="mb-4">
-          <AvatarHero state={result.win ? 'win' : 'lose'} size={130} />
+        <div className="mb-4" style={{filter:result.win?'drop-shadow(0 0 20px #00ff8880)':'drop-shadow(0 0 12px #ff444460)'}}>
+          <PixelAlien state={result.win ? 'win' : 'lose'} size={3} />
         </div>
 
         <p className="font-mono font-black mb-1 tracking-widest" style={{fontSize:'clamp(22px,7vw,36px)', color:c}}>
