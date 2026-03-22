@@ -94,7 +94,7 @@ function AvatarHero({ state = 'idle', size = 120 }: { state?: 'idle'|'win'|'lose
         boxShadow: glow,
         position:'relative',
       }}>
-        <img src="https://pub-79dff3b50b29432ba6d3f85b0af33331.r2.dev/eelienx/avatar.jpg" alt="39eliens"
+        <img src="/avatar.jpg" alt="39eliens"
           style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }}
           onError={(e) => { (e.target as HTMLImageElement).style.display='none' }}
         />
@@ -198,7 +198,7 @@ function MoneyRain() {
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-type Screen = 'home' | 'path' | 'manual' | 'copy' | 'hodl' | 'stocks' | 'executing' | 'result'
+type Screen = 'home' | 'path' | 'manual' | 'copy' | 'hodl' | 'hodlscreen' | 'stocks' | 'executing' | 'result'
 interface TradeResult { profit: number; action: string; message: string; win: boolean; real?: boolean }
 
 // ── Session + Balance hook ────────────────────────────────────────────────────
@@ -351,6 +351,11 @@ function HomeScreen({ onMode, balance, loggedIn, wallet }: { onMode: (m: 'manual
               → Conectar cuenta Bitso para trades reales en MXN
             </a>
           )}
+          <a href="/academia" className="flex items-center justify-center gap-2 py-3 rounded-2xl border active:scale-95 transition-all"
+            style={{borderColor:'rgba(94,114,228,0.25)',color:'#5e72e4',background:'rgba(94,114,228,0.05)'}}>
+            <span className="font-mono text-sm font-bold">📊 Ir a Academia</span>
+            <span className="font-mono text-xs opacity-60">Aprende a analizar gráficas</span>
+          </a>
         </div>
       </div>
 
@@ -397,9 +402,18 @@ function useWallet() {
   const connect = async () => {
     if (typeof window === 'undefined') return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const eth = (window as any).ethereum
+    const w = window as any
+    // Prefer MetaMask, fallback to any ethereum provider
+    const eth = w.ethereum
+    const phantom = w.phantom
+
+    // Phantom is primarily Solana — check if it also has eth support
+    if (!eth && phantom?.solana) {
+      alert('👻 Phantom es para Solana. Para operar ETH necesitas MetaMask 🦊\nhttps://metamask.io')
+      return
+    }
     if (!eth) {
-      alert('🦊 Instala MetaMask para conectar tu wallet\nhttps://metamask.io')
+      alert('🦊 Instala MetaMask para conectar tu wallet ETH\nhttps://metamask.io')
       return
     }
     setConnecting(true)
@@ -496,9 +510,16 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
         <h1 className="font-mono font-black text-4xl" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470' }}>
           eelie<span style={{color:'#fff'}}>n</span>X
         </h1>
-        <p className="font-mono text-sm font-bold" style={{color: blink ? '#00ff88' : 'rgba(0,255,136,0.3)', transition:'color 0.1s'}}>
-          ¿Cuál es tu estilo? 👽
+        <p className="font-mono text-base font-black text-white text-center px-2 mb-1">
+          eelienX Protocol conecta<br/>y <span style={{color:'#00ff88'}}>tu agente ejecuta por ti</span>
         </p>
+        <p className="font-mono text-xs" style={{color:'rgba(255,255,255,0.35)'}}>¿Cuál es tu estilo? 👽</p>
+
+        {/* Agent live status */}
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{background:'rgba(0,255,136,0.06)',border:'1px solid rgba(0,255,136,0.20)'}}>
+          <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
+          <span className="font-mono text-[10px]" style={{color:'#00ff88'}}>Agente activo · ETH/MXN · Bankr · Locus · Base</span>
+        </div>
 
         {/* Two big paths */}
         <div className="flex flex-col gap-4 w-full max-w-sm mt-2">
@@ -1144,7 +1165,8 @@ function ExecutingScreen({ action }: { action: string }) {
       style={{background:'linear-gradient(180deg,#0d0d1a,#0a1a0d)'}}>
       <div className="text-7xl mb-6" style={{animation:'wobble 1s ease infinite'}}>⚡</div>
       <h2 className="font-mono font-black text-2xl mb-1" style={{color:'#00ff88'}}>EJECUTANDO{dots}</h2>
-      <p className="font-mono text-xs mb-8" style={{color:'rgba(255,255,255,0.30)'}}>{action}</p>
+      <p className="font-mono text-xs mb-1" style={{color:'rgba(255,255,255,0.30)'}}>{action}</p>
+      <p className="font-mono text-[10px] mb-8 px-4 text-center" style={{color:'rgba(0,255,136,0.50)'}}>eelienX Protocol conecta — tu agente ejecuta por ti</p>
       <div className="w-full max-w-xs space-y-2.5 text-left">
         {EXEC_MSGS.slice(0, idx+1).map((m,i) => (
           <div key={i} className="font-mono text-sm flex items-start gap-2.5" style={{color: i<idx?'#2E7D6B':'#00ff88', animation:'slideup 0.3s ease'}}>
@@ -1304,7 +1326,7 @@ export default function Game2() {
       </div>
       <div className="flex-1 flex flex-col gap-4 px-5 py-6 items-center justify-center">
         <p className="font-mono text-base font-black text-white mb-2">¿Cómo quieres invertir?</p>
-        <button onClick={() => { playSound('click'); setScreen('hodlscreen' as Screen) }}
+        <button onClick={() => { playSound('click'); setScreen('hodlscreen') }}
           className="w-full max-w-sm rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
           style={{ borderColor:'#F7931A', background:'rgba(247,147,26,0.06)' }}>
           <p className="font-mono text-lg font-black mb-1" style={{color:'#F7931A'}}>💎 HODL Crypto</p>
@@ -1319,7 +1341,7 @@ export default function Game2() {
       </div>
     </div>
   )
-  if (screen === ('hodlscreen' as Screen)) return <HodlScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
+  if (screen === 'hodlscreen') return <HodlScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
   if (screen === 'stocks')    return <StocksScreen onExecute={executeTrade} onBack={() => setScreen('hodl')} />
   if (screen === 'manual')    return <ManualScreen onExecute={executeTrade} onBack={() => setScreen('path')} loggedIn={loggedIn} />
   if (screen === 'copy')      return <CopyScreen  onExecute={executeTrade} onBack={() => setScreen('path')} loggedIn={loggedIn} />
