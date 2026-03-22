@@ -583,10 +583,10 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
         )}
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 text-center gap-6">
+      <div className="relative z-10 flex flex-col items-center flex-1 px-6 text-center gap-4 overflow-y-auto py-4 pb-12">
         {/* Alien */}
         <div style={{filter:'drop-shadow(0 0 12px #39ff1460)'}}>
-          <PixelShip size={3} />
+          <PixelShip size={2} />
         </div>
         <h1 className="font-mono font-black text-4xl mb-0.5" style={{ color:'#5e72e4', textShadow:'0 0 40px #5e72e470', letterSpacing:2 }}>
           eelie<span style={{color:'#fff'}}>n</span>X <span style={{color:'rgba(255,255,255,0.5)',fontSize:'0.6em',letterSpacing:1}}>Protocol</span>
@@ -604,7 +604,7 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
         {/* Two big paths */}
         <div className="flex flex-col gap-4 w-full max-w-sm mt-2">
           <button onClick={() => { playSound('click'); onPath('quick') }}
-            className="rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
+            className="rounded-2xl border-2 py-4 px-5 text-left active:scale-95 transition-all"
             style={{ borderColor:'#f5a623', background:'rgba(245,166,35,0.06)' }}>
             <p className="font-mono text-xl font-black mb-1" style={{color:'#f5a623'}}>🚀 Quiero dinero</p>
             <p className="font-mono text-xl font-black mb-2" style={{color:'#f5a623'}}>rápido y fácil</p>
@@ -612,7 +612,7 @@ function PathScreen({ onPath, wallet, balance, loggedIn }: {
           </button>
 
           <button onClick={() => { playSound('click'); onPath('long') }}
-            className="rounded-2xl border-2 py-6 px-6 text-left active:scale-95 transition-all"
+            className="rounded-2xl border-2 py-4 px-5 text-left active:scale-95 transition-all"
             style={{ borderColor:'#00ff88', background:'rgba(0,255,136,0.06)' }}>
             <p className="font-mono text-xl font-black mb-1" style={{color:'#00ff88'}}>💎 Quiero dinero</p>
             <p className="font-mono text-xl font-black mb-2" style={{color:'#00ff88'}}>seguro a largo plazo</p>
