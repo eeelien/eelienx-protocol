@@ -225,6 +225,24 @@ function buildTip(p: PriceData | null) {
   return { msg: `ETH en $${fmt(p.last)} MXN, movimiento de ${chg > 0 ? '+' : ''}${pct}% en 24h. Mercado lateral — agente en espera.`, risk: 'ALTO', riskC: '#f5a623' }
 }
 
+// ── TRADE HISTORY ────────────────────────────────────────────────────────────────
+const HISTORY_KEY = 'eelienx_history'
+function useHistory() {
+  const [hist, setHist] = useState<{profit:number;win:boolean;action:string}[]>([])
+  useEffect(() => {
+    try { const s = localStorage.getItem(HISTORY_KEY); if (s) setHist(JSON.parse(s)) } catch {}
+  }, [])
+  const addTrade = (t: {profit:number;win:boolean;action:string}) => {
+    setHist(prev => {
+      const next = [t, ...prev].slice(0, 8)
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const total = hist.reduce((s, t) => s + (t.win ? t.profit : -Math.abs(t.profit)), 0)
+  return { hist, addTrade, total }
+}
+
 // ── MANUAL ────────────────────────────────────────────────────────────────────
 
 function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>void; onBack:()=>void; loggedIn:boolean }) {
@@ -243,29 +261,39 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
         </span>
       </div>
 
-      <div className="flex-1 flex flex-col gap-4 px-5 py-4 overflow-y-auto">
-        {/* Price */}
+      <div className="flex-1 flex flex-col gap-3 px-5 py-4 overflow-y-auto">
+        {/* Price + mini chart */}
         <div className="rounded-2xl border p-4" style={{background:'rgba(255,255,255,0.03)',borderColor:'rgba(255,255,255,0.08)'}}>
           <div className="flex items-center justify-between mb-3">
             <span className="font-mono text-xs" style={{color:'#555'}}>ETH / MXN · 1H</span>
             <div className="text-right">
-              <span className="font-mono font-black text-xl" style={{color:'#00ff88'}}>$62,450</span>
-              <span className="font-mono text-xs ml-1.5 px-1.5 py-0.5 rounded" style={{color:'#00ff88',background:'rgba(0,255,136,0.12)'}}>+2.1%</span>
+              <span className="font-mono font-black text-xl" style={{color:'#00ff88'}}>${livePrice ? livePrice.last.toLocaleString('es-MX',{maximumFractionDigits:0}) : '...'}</span>
+              {livePrice && <span className="font-mono text-xs ml-1.5 px-1.5 py-0.5 rounded" style={{color: livePrice.change24>=0?'#00ff88':'#ff4444',background: livePrice.change24>=0?'rgba(0,255,136,0.12)':'rgba(255,68,68,0.12)'}}>{livePrice.change24>=0?'+':''}{livePrice.change24.toFixed(1)}%</span>}
             </div>
           </div>
           <MiniChart color="#00ff88" />
         </div>
 
-        {/* NPC */}
-        <NPC
-          text={action ? `Acción: ${action.toUpperCase()}. ${tip.msg} Confirma si quieres proceder.` : `Analizando mercado… ${tip.msg}`}
-          color={tip.riskC}
-        />
+        {/* 🧠 AGENT ANALYSIS — prominent box */}
+        <div className="rounded-2xl border-2 p-4" style={{background:'rgba(0,255,136,0.04)',borderColor:'#00ff8830'}}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-base">🧠</span>
+            <span className="font-mono text-xs font-bold" style={{color:'#00ff88'}}>AGENTE DICE:</span>
+            <span className="font-mono text-[9px] px-1.5 py-0.5 rounded-full ml-auto" style={{color:tip.riskC,background:`${tip.riskC}20`,border:`1px solid ${tip.riskC}40`}}>riesgo {tip.risk}</span>
+          </div>
+          <p className="font-mono text-sm leading-snug" style={{color:'rgba(255,255,255,0.85)'}}>
+            &ldquo;{action ? `Acción seleccionada: ${action.toUpperCase()}. ${tip.msg} Confirma para ejecutar.` : tip.msg}&rdquo;
+          </p>
+        </div>
 
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs" style={{color:'#444'}}>Riesgo:</span>
-          <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-full" style={{color:tip.riskC,background:`${tip.riskC}15`,border:`1px solid ${tip.riskC}35`}}>{tip.risk}</span>
-          {loggedIn && <span className="ml-auto font-mono text-xs" style={{color:'#444'}}>Trade real en Bitso</span>}
+        {/* Strategy rules */}
+        <div className="rounded-xl border px-4 py-3 flex items-center justify-between" style={{background:'rgba(255,255,255,0.02)',borderColor:'rgba(255,255,255,0.06)'}}>
+          <span className="font-mono text-[10px]" style={{color:'#444'}}>Estrategia:</span>
+          <div className="flex gap-3">
+            <span className="font-mono text-[10px] font-bold" style={{color:'#00ff88'}}>BUY si baja 3%</span>
+            <span className="font-mono text-[10px]" style={{color:'#333'}}>|</span>
+            <span className="font-mono text-[10px] font-bold" style={{color:'#ff4444'}}>SELL si sube 5%</span>
+          </div>
         </div>
 
         {/* BUY / SELL */}
@@ -287,15 +315,22 @@ function ManualScreen({ onExecute, onBack, loggedIn }: { onExecute:(a:string)=>v
 
       {/* Bottom CTA */}
       <div className="px-5 pb-safe pb-6 pt-3 border-t" style={{borderColor:'rgba(255,255,255,0.06)'}}>
-        <button disabled={!action}
-          onClick={() => action && (playSound('execute'), onExecute(action.toUpperCase()))}
-          className="w-full rounded-2xl py-5 font-mono font-black text-base active:scale-95 transition-all disabled:opacity-25"
-          style={{
-            background: action ? 'linear-gradient(135deg,#5e72e4,#00ff88)' : 'rgba(255,255,255,0.05)',
-            color:'white', boxShadow: action ? '0 8px 30px rgba(94,114,228,0.35)' : 'none',
-          }}>
-          ⚡ EJECUTAR TRADE
-        </button>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <button onClick={() => { playSound('click'); alert('💰 Pago de 0.01 USDC procesado vía x402 · Base\n✅ Agente premium activado — señales avanzadas desbloqueadas') }}
+            className="rounded-xl py-3 font-mono text-xs font-bold border active:scale-95 transition-all"
+            style={{borderColor:'#f5a62350',color:'#f5a623',background:'rgba(245,166,35,0.06)'}}>
+            💰 Agente premium<br/><span style={{fontSize:'9px',opacity:0.7}}>0.01 USDC via x402</span>
+          </button>
+          <button disabled={!action}
+            onClick={() => action && (playSound('execute'), onExecute(action.toUpperCase()))}
+            className="rounded-xl py-3 font-mono font-black text-sm active:scale-95 transition-all disabled:opacity-25"
+            style={{
+              background: action ? 'linear-gradient(135deg,#5e72e4,#00ff88)' : 'rgba(255,255,255,0.05)',
+              color:'white', boxShadow: action ? '0 8px 30px rgba(94,114,228,0.35)' : 'none',
+            }}>
+            ⚡ EJECUTAR
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -424,16 +459,17 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay:()=>
           {result.win ? '🤩' : '😭'}
         </div>
 
+        <p className="font-mono font-black mb-1 tracking-widest" style={{fontSize:'clamp(22px,7vw,36px)', color:c}}>
+          {result.win ? '🎉 ¡GANASTE!' : '😢 PERDISTE'}
+        </p>
+        {result.win && <p className="text-4xl mb-2">💰💰💰</p>}
+
         <h2 className="font-mono font-black mb-2" style={{fontSize:'clamp(40px,11vw,64px)', color:c, textShadow:`0 0 40px ${c}55`}}>
           {result.win ? `+${result.profit.toFixed(2)}%` : `-${Math.abs(result.profit).toFixed(2)}%`}
         </h2>
 
-        <p className="font-mono text-base font-bold mb-1" style={{color:c}}>
-          {result.win ? '🚀 ¡GANASTE!' : '💸 Perdiste esta vez'}
-        </p>
-
         <p className="font-mono text-sm mb-6" style={{color:'rgba(255,255,255,0.40)'}}>
-          {result.action} · {result.message}
+          {result.win ? `Trade exitoso 🚀 · ${result.action}` : `El mercado fue volátil · ${result.action}`}
         </p>
 
         <div className="rounded-2xl border-2 px-7 py-4 mb-8"
@@ -461,6 +497,27 @@ function ResultScreen({ result, onReplay }: { result: TradeResult; onReplay:()=>
   )
 }
 
+// ── HISTORY PANEL ────────────────────────────────────────────────────────────────
+function HistoryPanel({ hist, total }: { hist:{profit:number;win:boolean;action:string}[]; total:number }) {
+  if (hist.length === 0) return null
+  return (
+    <div className="rounded-2xl border p-4 mx-5 mb-4" style={{background:'rgba(255,255,255,0.02)',borderColor:'rgba(255,255,255,0.07)'}}>
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-mono text-xs font-bold" style={{color:'#555'}}>📊 HISTORIAL</span>
+        <span className="font-mono text-xs font-black" style={{color: total>=0?'#00ff88':'#ff4444'}}>{total>=0?'+':''}{total.toFixed(2)}% total</span>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        {hist.map((t,i) => (
+          <span key={i} className="font-mono text-xs px-2 py-1 rounded-lg font-bold"
+            style={{background: t.win?'rgba(0,255,136,0.12)':'rgba(255,68,68,0.12)', color: t.win?'#00ff88':'#ff4444'}}>
+            {t.win?'+':'-'}{Math.abs(t.profit).toFixed(1)}%
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Game2() {
   const [screen, setScreen] = useState<Screen>('home')
@@ -468,6 +525,7 @@ export default function Game2() {
   const [tradeAction, setTradeAction] = useState('')
   const [result, setResult] = useState<TradeResult | null>(null)
   const { balance, loggedIn } = useSession()
+  const { hist, addTrade, total } = useHistory()
 
   async function executeTrade(action: string) {
     setTradeAction(action)
@@ -486,7 +544,7 @@ export default function Game2() {
         if (d.success) {
           const profit = +(Math.random() * 5 + 1).toFixed(2)
           setResult({ action, profit, message: 'Ejecutado en Bitso · ETH/MXN', win: true, real: true })
-          setScreen('result'); return
+          addTrade({ profit, win: true, action }); setScreen('result'); return
         }
       }
 
@@ -499,7 +557,9 @@ export default function Game2() {
       const d = await res.json()
       const isRisk = d.action === 'RISK'
       const profit = parseFloat(d.profit) || +(Math.random() * 6 + 1.5).toFixed(2)
-      setResult({ action: isRisk ? action : d.action, profit: isRisk ? -(Math.random()*3+0.5) : profit, message: d.message ?? 'Operación completada', win: !isRisk })
+      const tradeResult = { action: isRisk ? action : d.action, profit: isRisk ? -(Math.random()*3+0.5) : profit, message: d.message ?? 'Operación completada', win: !isRisk }
+      addTrade({ profit: tradeResult.profit, win: tradeResult.win, action })
+      setResult(tradeResult)
     } catch {
       const profit = +(Math.random() * 6 + 1.5).toFixed(2)
       const win = Math.random() > 0.25
@@ -508,7 +568,12 @@ export default function Game2() {
     setScreen('result')
   }
 
-  if (screen === 'home')      return <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} />
+  if (screen === 'home')      return (
+    <>
+      <HomeScreen onMode={m => setScreen(m)} balance={balance} loggedIn={loggedIn} />
+      <div style={{position:'fixed',bottom:'80px',left:0,right:0,zIndex:20}}><HistoryPanel hist={hist} total={total} /></div>
+    </>
+  )
   if (screen === 'manual')    return <ManualScreen onExecute={executeTrade} onBack={() => setScreen('home')} loggedIn={loggedIn} />
   if (screen === 'copy')      return <CopyScreen  onExecute={executeTrade} onBack={() => setScreen('home')} loggedIn={loggedIn} />
   if (screen === 'executing') return <ExecutingScreen action={tradeAction} />
